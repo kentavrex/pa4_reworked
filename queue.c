@@ -2,22 +2,47 @@
 #include <stdbool.h>
 #include "queue.h"
 
-void clear_queue(struct RequestQueue *queue) {
-	queue->size = 0;
+static void reset_queue_size(struct RequestQueue *queue) {
+    queue->size = 0;
 }
 
-struct Request get_head(const struct RequestQueue *queue) {
-	if (queue->size > 0) return queue->heap[0];
+static bool is_queue_empty(const struct RequestQueue *queue) {
+    return queue->size == 0;
+}
+
+static struct Request default_request() {
     return (struct Request){0, 0};
 }
 
-int8_t requests_compare(struct Request first, struct Request second) {
+void clear_queue(struct RequestQueue *queue) {
+    reset_queue_size(queue);  // Вызываем функцию для сброса размера
+}
+
+struct Request get_head(const struct RequestQueue *queue) {
+    if (is_queue_empty(queue)) {
+        return default_request();  // Возвращаем "пустой" запрос, если очередь пуста
+    }
+    return queue->heap[0];  // Возвращаем первый запрос из очереди
+}
+
+static int8_t compare_by_time(struct Request first, struct Request second) {
     if (first.req_time > second.req_time) return 1;
     if (first.req_time < second.req_time) return -1;
+    return 0;
+}
+
+static int8_t compare_by_pid(struct Request first, struct Request second) {
     if (first.loc_pid > second.loc_pid) return 1;
     if (first.loc_pid < second.loc_pid) return -1;
     return 0;
 }
+
+int8_t requests_compare(struct Request first, struct Request second) {
+    int8_t time_comparison = compare_by_time(first, second);
+    if (time_comparison != 0) return time_comparison;
+    return compare_by_pid(first, second);  // Если время одинаковое, сравниваем по pid
+}
+
 
 static void swap_requests(struct RequestQueue *queue, local_id i, local_id j) {
     local_id t1 = queue->heap[i].loc_pid;
