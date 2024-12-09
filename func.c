@@ -360,7 +360,7 @@ int handle_cs_request2(struct Context *context, Message *msg) {
 }
 
 // Функция для обработки CS_RELEASE сообщений
-int handle_cs_release(struct Context *context) {
+int handle_cs_release2(struct Context *context) {
     if (context->mutexl) {
         update_lamport_time_if_needed(get_lamport_time());
         lamport_time++;
@@ -411,7 +411,7 @@ int child_func(struct Context context) {
                 if (handle_cs_request2(&context, &msg)) return 6;
                 break;
             case CS_RELEASE:
-                if (handle_cs_release(&context)) return 7;
+                if (handle_cs_release2(&context)) return 7;
                 break;
             case DONE:
                 if (context.num_done < context.children) {
