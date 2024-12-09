@@ -103,7 +103,7 @@ int calculate_pipe_index(const struct Pipes *pipes, struct PipeDescriptor addres
     return index;
 }
 
-sstatic void close_process_pipe(FILE *pipe_log, const struct Pipes *pipes, local_id process_id, local_id i, local_id j, PipeMode mode) {
+static void close_process_pipe(FILE *pipe_log, const struct Pipes *pipes, local_id process_id, local_id i, local_id j, PipeMode mode) {
     Descriptor pipe = access_pipe(pipes, (struct PipeDescriptor){i, j, mode});
     if ((mode == WRITING && i != process_id) || (mode == READING && j != process_id)) {
         close(pipe);
@@ -139,6 +139,11 @@ void flush_pipe_log(FILE *pipe_log) {
     fflush(pipe_log);
 }
 
+int calculate_pipe_index(const struct Pipes *pipes, struct PipeDescriptor address) {
+    int index = address.from * (pipes->size - 1);
+    index += address.to - (address.from < address.to);
+    return index;
+}
 
 struct PipeDescriptor get_pipe_descriptor(const struct Pipes *pipes, int descriptor_index) {
     struct PipeDescriptor res;
@@ -146,7 +151,7 @@ struct PipeDescriptor get_pipe_descriptor(const struct Pipes *pipes, int descrip
     res.mode = descriptor_index % 2;
     res.from = (descriptor_index / 2) / (pipes->size - 1);
     if (res.from <= res.to) {
-      ++res.to;
+        ++res.to;
     }
     return res;
 }
