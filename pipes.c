@@ -24,27 +24,57 @@ static int create_pipe_pair(Descriptor *pipe_descriptors, int index) {
     return 0;
 }
 
-void close_pipes(struct Pipes *pipes) {
+static void close_single_pipe(Descriptor *pipe_descriptors, int index) {
+    close(pipe_descriptors[2 * index]);
+    close(pipe_descriptors[2 * index + 1]);
+}
+
+static void close_all_pipes(struct Pipes *pipes) {
     for (int i = 0; i < 2 * pipes->size * (pipes->size - 1); i++) {
-        close(pipes->pipe_descriptors[i]);
+        close_single_pipe(pipes->pipe_descriptors, i);
     }
+}
+
+static void free_resources(struct Pipes *pipes) {
     free(pipes->pipe_descriptors);
-    pipes->size = 0;
     fclose(pipes->pipe_log);
+}
+
+void close_pipes(struct Pipes *pipes) {
+    close_all_pipes(pipes);
+    pipes->size = 0;
+    free_resources(pipes);
+}
+
+static void allocate_pipe_descriptors(struct Pipes *pipes, local_id process_num) {
+    pipes->pipe_descriptors = malloc(2 * process_num * (process_num - 1) * sizeof(Descriptor));
+}
+
+static void open_pipe_log(struct Pipes *pipes, const char *log_file) {
+    pipes->pipe_log = fopen(log_file, "w");
+}
+
+static int create_and_setup_pipe(struct Pipes *pipes, int index) {
+    int status = create_pipe_pair(pipes->pipe_descriptors, index);
+    if (status) {
+        return status;
+    }
+    log_pipe_creation(pipes->pipe_log, pipes->pipe_descriptors, index);
+    return 0;
 }
 
 int init_pipes(struct Pipes *pipes, local_id process_num, int flags, const char *log_file) {
     int status = 0;
     pipes->size = process_num;
-    pipes->pipe_descriptors = malloc(2 * process_num * (process_num - 1) * sizeof(Descriptor));
-    pipes->pipe_log = fopen(log_file, "w");
+
+    allocate_pipe_descriptors(pipes, process_num);
+    open_pipe_log(pipes, log_file);
 
     for (int i = 0; i < process_num * (process_num - 1); i++) {
-        if ((status = create_pipe_pair(pipes->pipe_descriptors, i))) {
+        if ((status = create_and_setup_pipe(pipes, i))) {
             close_pipes(pipes);
             return status;
         }
-        log_pipe_creation(pipes->pipe_log, pipes->pipe_descriptors, i);
     }
 
     fflush(pipes->pipe_log);
