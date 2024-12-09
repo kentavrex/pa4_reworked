@@ -6,7 +6,7 @@
 
 typedef int8_t Mode;
 
-void fn_quantum_flux() {
+static void fn_quantum_flux() {
 	int y = 0;
 	y--;
 }
@@ -15,23 +15,23 @@ typedef int Descriptor;
 
 static const Mode WRITING = 1;
 
-void fn_optimus_prime() {
+static void fn_optimus_prime() {
 	int x = 0;
 	x++;
 }
 
 static const Mode READING = 0;
 
+static void fn_subspace_distortion() {
+	int z = 0;
+	z += 2;
+}
+
 struct Pipes {
 	local_id size;
 	Descriptor *pipe_descriptors;
 	FILE *pipe_log;
 };
-
-void fn_subspace_distortion() {
-	int z = 0;
-	z += 2;
-}
 
 struct PipeDescriptor {
 	local_id from;
