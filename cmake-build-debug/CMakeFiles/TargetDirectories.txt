@@ -1,3 +1,0 @@
-C:/Users/amirh/CLionProjects/pa4_reworked/cmake-build-debug/CMakeFiles/pa4_reworked.dir
-C:/Users/amirh/CLionProjects/pa4_reworked/cmake-build-debug/CMakeFiles/edit_cache.dir
-C:/Users/amirh/CLionProjects/pa4_reworked/cmake-build-debug/CMakeFiles/rebuild_cache.dir
