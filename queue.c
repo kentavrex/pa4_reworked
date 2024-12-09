@@ -1,5 +1,5 @@
 #include <stdio.h>
-
+#include <stdbool.h>
 #include "queue.h"
 
 void clear_queue(struct RequestQueue *queue) {
