@@ -251,139 +251,172 @@ void parent_func(struct Context context){
     for (local_id i = 0; i < context.children; i++) wait(NULL);
 }
 
-int child_func(struct Context context){
-    clear_queue(&context.requests);
+// Функция для отправки STARTED сообщения
+int send_started_message(struct Context *context) {
     lamport_time++;
     Message started;
     started.s_header.s_magic = MESSAGE_MAGIC;
     started.s_header.s_type = STARTED;
     started.s_header.s_local_time = get_lamport_time();
-    sprintf(started.s_payload, log_started_fmt, get_lamport_time(), context.loc_pid, getpid(), getppid(), 0);
+    sprintf(started.s_payload, log_started_fmt, get_lamport_time(), context->loc_pid, getpid(), getppid(), 0);
     started.s_header.s_payload_len = strlen(started.s_payload);
     puts(started.s_payload);
-    fputs(started.s_payload, context.events);
-    if (send_multicast(&context, &started)) {
-        fprintf(stderr, "Child %d: failed to send STARTED message\n", context.loc_pid);
-        close_pipes(&context.pipes);
-        fclose(context.events);
+    fputs(started.s_payload, context->events);
+
+    if (send_multicast(context, &started)) {
+        fprintf(stderr, "Child %d: failed to send STARTED message\n", context->loc_pid);
+        close_pipes(&context->pipes);
+        fclose(context->events);
         return 4;
     }
+    return 0;  // Сообщение успешно отправлено
+}
+
+// Функция для обработки STARTED сообщений
+int handle_started_message(struct Context *context, Message *msg) {
+    if (context->num_started < context->children) {
+        if (!context->rec_started[context->msg_sender]) {
+            update_lamport_time_if_needed(msg->s_header.s_local_time);
+            context->rec_started[context->msg_sender] = 1;
+            context->num_started++;
+            if (context->num_started == context->children) {
+                printf(log_received_all_started_fmt, get_lamport_time(), context->loc_pid);
+                fprintf(context->events, log_received_all_started_fmt, get_lamport_time(), context->loc_pid);
+                return 1;  // Все процессы начали
+            }
+        }
+    }
+    return 0;  // Не все процессы начали
+}
+
+// Функция для выполнения операций в цикле
+int perform_operations(struct Context *context) {
+    for (int16_t i = 1; i <= context->loc_pid * 5; i++) {
+        char log[50];
+        sprintf(log, log_loop_operation_fmt, context->loc_pid, i, context->loc_pid * 5);
+        if (context->mutexl) {
+            int status = request_cs(context);
+            if (status) {
+                fprintf(stderr, "Child %d: request_cs() resulted %d\n", context->loc_pid, status);
+                return 100;  // Ошибка при запросе критической секции
+            }
+        }
+        print(log);
+        if (context->mutexl) {
+            int status = release_cs(context);
+            if (status) {
+                fprintf(stderr, "Child %d: release_cs() resulted %d\n", context->loc_pid, status);
+                return 101;  // Ошибка при освобождении критической секции
+            }
+        }
+    }
+    return 0;  // Операции успешно выполнены
+}
+
+// Функция для отправки DONE сообщения
+int send_done_message(struct Context *context) {
+    lamport_time++;
+    Message done;
+    done.s_header.s_magic = MESSAGE_MAGIC;
+    done.s_header.s_type = DONE;
+    sprintf(done.s_payload, log_done_fmt, get_lamport_time(), context->loc_pid, 0);
+    done.s_header.s_payload_len = strlen(done.s_payload);
+    done.s_header.s_local_time = get_lamport_time();
+    puts(done.s_payload);
+    fputs(done.s_payload, context->events);
+
+    if (send_multicast(context, &done)) {
+        fprintf(stderr, "Child %d: failed to send DONE message\n", context->loc_pid);
+        close_pipes(&context->pipes);
+        fclose(context->events);
+        return 5;
+    }
+    context->rec_done[context->loc_pid] = 1;
+    context->num_done++;
+    if (context->num_done == context->children) {
+        printf(log_received_all_done_fmt, get_lamport_time(), context->loc_pid);
+        fprintf(context->events, log_received_all_done_fmt, get_lamport_time(), context->loc_pid);
+    }
+    return 0;  // DONE сообщение отправлено успешно
+}
+
+// Функция для обработки CS_REQUEST сообщений
+int handle_cs_request2(struct Context *context, Message *msg) {
+    if (context->mutexl) {
+        update_lamport_time_if_needed(msg->s_header.s_local_time);
+        lamport_time++;
+        push_request(&context->requests, (struct Request){context->msg_sender, msg->s_header.s_local_time});
+        if (get_head(&context->requests).loc_pid == context->msg_sender) {
+            lamport_time++;
+            Message reply;
+            reply.s_header.s_magic = MESSAGE_MAGIC;
+            reply.s_header.s_type = CS_REPLY;
+            reply.s_header.s_payload_len = 0;
+            reply.s_header.s_local_time = get_lamport_time();
+            return send(&context, get_head(&context->requests).loc_pid, &reply);
+        }
+    }
+    return 0;  // Обработано успешно
+}
+
+// Функция для обработки CS_RELEASE сообщений
+int handle_cs_release(struct Context *context) {
+    if (context->mutexl) {
+        update_lamport_time_if_needed(get_lamport_time());
+        lamport_time++;
+        pop_head(&context->requests);
+        local_id next = get_head(&context->requests).loc_pid;
+        if (next > 0 && next != context->loc_pid) {
+            lamport_time++;
+            Message reply;
+            reply.s_header.s_magic = MESSAGE_MAGIC;
+            reply.s_header.s_type = CS_REPLY;
+            reply.s_header.s_payload_len = 0;
+            reply.s_header.s_local_time = get_lamport_time();
+            return send(&context, next, &reply);
+        }
+    }
+    return 0;  // Обработано успешно
+}
+
+// Основная функция с рефакторингом
+int child_func(struct Context context) {
+    clear_queue(&context.requests);
+
+    // Шаг 1: Отправка STARTED сообщения
+    if (send_started_message(&context)) return 4;
+
+    // Шаг 2: Инициализация состояний
     for (local_id i = 1; i <= context.children; i++) context.rec_started[i] = (i == context.loc_pid);
     context.num_started = 1;
     for (local_id i = 1; i <= context.children; i++) context.rec_done[i] = 0;
     context.num_done = 0;
+
+    // Основной цикл
     int8_t active = 1;
     while (active || context.num_done < context.children) {
         Message msg;
         while (receive_any(&context, &msg)) {}
+
         switch (msg.s_header.s_type) {
             case STARTED:
-                if (context.num_started < context.children) {
-                    if (!context.rec_started[context.msg_sender]) {
-                        if (lamport_time < msg.s_header.s_local_time) lamport_time = msg.s_header.s_local_time;
-                        lamport_time++;
-                        context.rec_started[context.msg_sender] = 1;
-                        context.num_started++;
-                        if (context.num_started == context.children) {
-                            printf(log_received_all_started_fmt, get_lamport_time(), context.loc_pid);
-                            fprintf(context.events, log_received_all_started_fmt, get_lamport_time(), context.loc_pid);
-                            for (int16_t i = 1; i <= context.loc_pid * 5; i++) {
-                                char log[50];
-                                sprintf(log, log_loop_operation_fmt, context.loc_pid, i, context.loc_pid * 5);
-                                if (context.mutexl) {
-                                    int status = request_cs(&context);
-                                    if (status) {
-                                        fprintf(stderr, "Child %d: request_cs() resulted %d\n", context.loc_pid, status);
-                                        close_pipes(&context.pipes);
-                                        fclose(context.events);
-                                        return 100;
-                                    }
-                                }
-                                print(log);
-                                if (context.mutexl) {
-                                    int status = release_cs(&context);
-                                    if (status) {
-                                        fprintf(stderr, "Child %d: release_cs() resulted %d\n", context.loc_pid, status);
-                                        close_pipes(&context.pipes);
-                                        fclose(context.events);
-                                        return 101;
-                                    }
-                                }
-                            }
-                            lamport_time++;
-                            Message done;
-                            done.s_header.s_magic = MESSAGE_MAGIC;
-                            done.s_header.s_type = DONE;
-                            sprintf(done.s_payload, log_done_fmt, get_lamport_time(), context.loc_pid, 0);
-                            done.s_header.s_payload_len = strlen(done.s_payload);
-                            done.s_header.s_local_time = get_lamport_time();
-                            puts(done.s_payload);
-                            fputs(done.s_payload, context.events);
-                            if (send_multicast(&context, &done)) {
-                                fprintf(stderr, "Child %d: failed to send DONE message\n", context.loc_pid);
-                                close_pipes(&context.pipes);
-                                fclose(context.events);
-                                return 5;
-                            }
-                            context.rec_done[context.loc_pid] = 1;
-                            ++context.num_done;
-                            if (context.num_done == context.children) {
-                                printf(log_received_all_done_fmt, get_lamport_time(), context.loc_pid);
-                                fprintf(context.events, log_received_all_done_fmt, get_lamport_time(), context.loc_pid);
-                            }
-                            active = 0;
-                        }
-                    }
+                if (handle_started_message(&context, &msg)) {
+                    // Все процессы начали, продолжаем с операций
+                    if (perform_operations(&context)) return 100;
+                    if (send_done_message(&context)) return 5;
+                    active = 0;  // Заканчиваем
                 }
                 break;
             case CS_REQUEST:
-                if (active && context.mutexl) {
-                    if (lamport_time < msg.s_header.s_local_time) lamport_time = msg.s_header.s_local_time;
-                    lamport_time++;
-                    push_request(&context.requests, (struct Request){context.msg_sender, msg.s_header.s_local_time});
-                    if (get_head(&context.requests).loc_pid == context.msg_sender) {
-                        lamport_time++;
-                        Message reply;
-                        reply.s_header.s_magic = MESSAGE_MAGIC;
-                        reply.s_header.s_type = CS_REPLY;
-                        reply.s_header.s_payload_len = 0;
-                        reply.s_header.s_local_time = get_lamport_time();
-                        if (send(&context, get_head(&context.requests).loc_pid, &reply)) {
-                            fprintf(stderr, "Child %d: failed to send CS_REPLY message\n", context.loc_pid);
-                            close_pipes(&context.pipes);
-                            fclose(context.events);
-                            return 6;
-                        }
-                    }
-                }
+                if (handle_cs_request2(&context, &msg)) return 6;
                 break;
             case CS_RELEASE:
-                if (active && context.mutexl) {
-                    if (lamport_time < msg.s_header.s_local_time) lamport_time = msg.s_header.s_local_time;
-                    lamport_time++;
-                    pop_head(&context.requests);
-                    local_id next = get_head(&context.requests).loc_pid;
-                    if (next > 0 && next != context.loc_pid) {
-                        lamport_time++;
-                        Message reply;
-                        reply.s_header.s_magic = MESSAGE_MAGIC;
-                        reply.s_header.s_type = CS_REPLY;
-                        reply.s_header.s_payload_len = 0;
-                        reply.s_header.s_local_time = get_lamport_time();
-                        if (send(&context, next, &reply)) {
-                            fprintf(stderr, "Child %d: failed to send CS_REPLY message\n", context.loc_pid);
-                            close_pipes(&context.pipes);
-                            fclose(context.events);
-                            return 7;
-                        }
-                    }
-                }
+                if (handle_cs_release(&context)) return 7;
                 break;
             case DONE:
                 if (context.num_done < context.children) {
                     if (!context.rec_done[context.msg_sender]) {
-                        if (lamport_time < msg.s_header.s_local_time) lamport_time = msg.s_header.s_local_time;
-                        lamport_time++;
+                        update_lamport_time_if_needed(msg.s_header.s_local_time);
                         context.rec_done[context.msg_sender] = 1;
                         context.num_done++;
                         if (context.num_done == context.children) {
@@ -393,11 +426,9 @@ int child_func(struct Context context){
                     }
                 }
                 break;
-            default: 
-                break;
+            default: break;
         }
         fflush(context.events);
     }
     return 0;
 }
-
