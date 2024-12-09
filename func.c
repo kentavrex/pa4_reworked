@@ -452,79 +452,77 @@ int handle_cs_release2(struct Context *context) {
     return 0;  // Обработано успешно
 }
 
-int child_func(struct Context context) {
-    clear_queue(&context.requests);
-
-    if (send_started_message(&context)) return 4;
-
-    initialize_rec_started(&context);
-    initialize_rec_done(&context);
-
-    int8_t active = 1;
-
-    while (active || context.num_done < context.children) {
-        Message msg;
-        receive_message(&context, &msg);
-
-        switch (msg.s_header.s_type) {
-            case STARTED:
-                if (handle_started_message(&context, &msg)) {
-                    if (perform_operations(&context)) return 100;
-                    if (send_done_message(&context)) return 5;
-                    active = 0;
-                }
-                break;
-            case CS_REQUEST:
-                if (handle_cs_request2(&context, &msg)) return 6;
-                break;
-            case CS_RELEASE:
-                if (handle_cs_release2(&context)) return 7;
-                break;
-            case DONE:
-                handle_done_message3(&context, &msg);
-                break;
-            default: break;
-        }
-
-        fflush(context.events);
-    }
-
-    return 0;
+int send_start_message(struct Context *context) {
+    return send_started_message(context);
 }
 
-void initialize_rec_started(struct Context *context) {
+void initialize_states(struct Context *context) {
     for (local_id i = 1; i <= context->children; i++) {
         context->rec_started[i] = (i == context->loc_pid);
     }
     context->num_started = 1;
-}
 
-void initialize_rec_done(struct Context *context) {
     for (local_id i = 1; i <= context->children; i++) {
         context->rec_done[i] = 0;
     }
     context->num_done = 0;
 }
 
-void receive_message(struct Context *context, Message *msg) {
-    while (receive_any(context, msg)) {}
+int handle_started2(struct Context *context, Message *msg) {
+    if (handle_started_message(context, msg)) {
+        if (perform_operations(context)) return 100;
+        if (send_done_message(context)) return 5;
+        return 0;
+    }
+    return 1;
 }
 
-void handle_done_message3(struct Context *context, Message *msg) {
+void handle_done2(struct Context *context, Message *msg) {
     if (context->num_done < context->children) {
         if (!context->rec_done[context->msg_sender]) {
             update_lamport_time_if_needed(msg->s_header.s_local_time);
             context->rec_done[context->msg_sender] = 1;
             context->num_done++;
-
             if (context->num_done == context->children) {
-                log_all_done(context);
+                printf(log_received_all_done_fmt, get_lamport_time(), context->loc_pid);
+                fprintf(context->events, log_received_all_done_fmt, get_lamport_time(), context->loc_pid);
             }
         }
     }
 }
 
-void log_all_done(struct Context *context) {
-    printf(log_received_all_done_fmt, get_lamport_time(), context->loc_pid);
-    fprintf(context->events, log_received_all_done_fmt, get_lamport_time(), context->loc_pid);
+void process_message(struct Context *context, Message *msg) {
+    switch (msg->s_header.s_type) {
+        case STARTED:
+            if (!handle_started2(context, msg)) return;
+            break;
+        case CS_REQUEST:
+            if (handle_cs_request2(context, msg)) return;
+            break;
+        case CS_RELEASE:
+            if (handle_cs_release2(context)) return;
+            break;
+        case DONE:
+            handle_done2(context, msg);
+            break;
+        default: break;
+    }
+}
+
+int child_func(struct Context context) {
+    clear_queue(&context.requests);
+    if (send_start_message(&context)) return 4;
+    initialize_states(&context);
+
+    int8_t active = 1;
+    while (active || context.num_done < context.children) {
+        Message msg;
+        while (receive_any(&context, &msg)) {}
+
+        process_message(&context, &msg);
+
+        if (context.num_done == context.children) active = 0;
+        fflush(context.events);
+    }
+    return 0;
 }
