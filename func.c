@@ -1,4 +1,8 @@
 #include "func.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
 
 timestamp_t get_lamport_time() {
 	return lamport_time;
@@ -147,56 +151,84 @@ int request_cs(const void * self) {
     return 0;  // Success
 }
 
+static void prepare_release_message(Message *release) {
+    release->s_header.s_magic = MESSAGE_MAGIC;
+    release->s_header.s_type = CS_RELEASE;
+    release->s_header.s_payload_len = 0;
+    release->s_header.s_local_time = get_lamport_time();
+}
 
-int release_cs(const void * self) {
-    struct Context *context = (struct Context*)self;
-    pop_head(&context->requests);
-    lamport_time++;
-    Message release;
-    release.s_header.s_magic = MESSAGE_MAGIC;
-    release.s_header.s_type = CS_RELEASE;
-    release.s_header.s_payload_len = 0;
-    release.s_header.s_local_time = get_lamport_time();
-    if (send_multicast(context, &release)) {
+static int send_release_message(struct Context *context, Message *release) {
+    if (send_multicast(context, release)) {
         //fprintf(stderr, "Child %d: failed to send CS_RELEASE message\n", context->loc_pid);
         return 1;
-    }
-    local_id next = get_head(&context->requests).loc_pid;
-    if (next > 0) {
-        lamport_time++;
-        Message reply;
-        reply.s_header.s_magic = MESSAGE_MAGIC;
-        reply.s_header.s_type = CS_REPLY;
-        reply.s_header.s_payload_len = 0;
-        reply.s_header.s_local_time = get_lamport_time();
-        if (send(context, next, &reply)) {
-            //fprintf(stderr, "Child %d: failed to seNd CS_REPLY message\n", context->loc_pid);
-            return 2;
-        }
     }
     return 0;
 }
 
-int parse_args(int argc, char * argv[], struct Context * context){
+static void prepare_reply_message(Message *reply) {
+    reply->s_header.s_magic = MESSAGE_MAGIC;
+    reply->s_header.s_type = CS_REPLY;
+    reply->s_header.s_payload_len = 0;
+    reply->s_header.s_local_time = get_lamport_time();
+}
+
+static int send_reply_message(struct Context *context, local_id next, Message *reply) {
+    if (send(context, next, reply)) {
+        //fprintf(stderr, "Child %d: failed to send CS_REPLY message\n", context->loc_pid);
+        return 2;
+    }
+    return 0;
+}
+
+int release_cs(const void *self) {
+    struct Context *context = (struct Context*)self;
+    pop_head(&context->requests);
+    lamport_time++;
+
+    Message release;
+    prepare_release_message(&release);
+
+    if (send_release_message(context, &release)) {
+        return 1;
+    }
+
+    local_id next = get_head(&context->requests).loc_pid;
+    if (next > 0) {
+        lamport_time++;
+
+        Message reply;
+        prepare_reply_message(&reply);
+
+        return send_reply_message(context, next, &reply);
+    }
+
+    return 0;
+}
+
+static void parse_mute_and_pid_args(int argc, char *argv[], struct Context *context, int *rp) {
+    for (int i = 1; i < argc; i++) {
+        if (*rp) {
+            context->children = atoi(argv[i]);
+            *rp = 0;
+        }
+        if (strcmp(argv[i], "--mutexl") == 0) {
+            context->mutexl = 1;
+        } else if (strcmp(argv[i], "-p") == 0) {
+            *rp = 1;
+        }
+    }
+}
+
+int parse_args(int argc, char *argv[], struct Context *context) {
     if (argc < 3) {
         fprintf(stderr, "Usage: %s [--mutexl] -p N [--mutexl]\n", argv[0]);
         return 1;
     }
-    
-    (*context).mutexl = 0;
-    int8_t rp = 0;
-    for (int i = 1; i < argc; i++) {
-        if (rp) {
-            (*context).children = atoi(argv[i]);
-            rp = 0;
-        }
-        if (strcmp(argv[i], "--mutexl") == 0) {
-            (*context).mutexl = 1;
-        }
-        else if (strcmp(argv[i], "-p") == 0) {
-            rp = 1;
-        }
-    }
+
+    context->mutexl = 0;
+    int rp = 0;
+    parse_mute_and_pid_args(argc, argv, context, &rp);
 
     return 0;
 }
