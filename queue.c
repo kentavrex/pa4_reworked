@@ -19,40 +19,65 @@ int8_t requests_compare(struct Request first, struct Request second) {
     return 0;
 }
 
+static void swap_requests(struct RequestQueue *queue, local_id i, local_id j) {
+    local_id t1 = queue->heap[i].loc_pid;
+    queue->heap[i].loc_pid = queue->heap[j].loc_pid;
+    queue->heap[j].loc_pid = t1;
+
+    timestamp_t t2 = queue->heap[i].req_time;
+    queue->heap[i].req_time = queue->heap[j].req_time;
+    queue->heap[j].req_time = t2;
+}
+
+static local_id get_left_child(local_id index) {
+    return 2 * index + 1;
+}
+
+static local_id get_right_child(local_id index) {
+    return 2 * index + 2;
+}
+
+static bool has_left_child(struct RequestQueue *queue, local_id index) {
+    return get_left_child(index) < queue->size;
+}
+
+static bool has_right_child(struct RequestQueue *queue, local_id index) {
+    return get_right_child(index) < queue->size;
+}
+
+static bool should_swap_left(struct RequestQueue *queue, local_id index) {
+    local_id left = get_left_child(index);
+    return requests_compare(queue->heap[index], queue->heap[left]) > 0;
+}
+
+static bool should_swap_right(struct RequestQueue *queue, local_id index) {
+    local_id left = get_left_child(index);
+    local_id right = get_right_child(index);
+    return (right < queue->size) && (requests_compare(queue->heap[left], queue->heap[right]) > 0) &&
+           (requests_compare(queue->heap[index], queue->heap[right]) > 0);
+}
+
 static void sift_down(struct RequestQueue *queue, local_id index) {
-    if (index >= 0 && index < queue->size) {
-        while (2 * index + 1 < queue->size) {
-            local_id left = 2 * index + 1;
-            local_id right = left + 1;
-            if (right < queue->size && requests_compare(queue->heap[left], queue->heap[right]) > 0) {
-                if (requests_compare(queue->heap[index], queue->heap[right]) > 0) {
-                    local_id t1 = queue->heap[index].loc_pid;
-                    queue->heap[index].loc_pid = queue->heap[right].loc_pid;
-                    queue->heap[right].loc_pid = t1;
-                    timestamp_t t2 = queue->heap[index].req_time;
-                    queue->heap[index].req_time = queue->heap[right].req_time;
-                    queue->heap[right].req_time = t2;
-                    index = right;
-                } 
-                else {
-                    break;
-                }
-            } 
-            else if (requests_compare(queue->heap[index], queue->heap[left]) > 0) {
-                local_id t1 = queue->heap[index].loc_pid;
-                queue->heap[index].loc_pid = queue->heap[left].loc_pid;
-                queue->heap[left].loc_pid = t1;
-                timestamp_t t2 = queue->heap[index].req_time;
-                queue->heap[index].req_time = queue->heap[left].req_time;
-                queue->heap[left].req_time = t2;
-                index = left;
-            } 
-            else {
-                break;
-            }
+    if (index < 0 || index >= queue->size) {
+        return;
+    }
+
+    while (has_left_child(queue, index)) {
+        local_id left = get_left_child(index);
+        local_id right = get_right_child(index);
+
+        if (should_swap_right(queue, index)) {
+            swap_requests(queue, index, right);
+            index = right;
+        } else if (should_swap_left(queue, index)) {
+            swap_requests(queue, index, left);
+            index = left;
+        } else {
+            break;
         }
     }
 }
+
 
 void pop_head(struct RequestQueue *queue) {
     if (queue->size > 0) {
