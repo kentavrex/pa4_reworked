@@ -1,102 +1,60 @@
 #include "ipc.h"
 
-void _update_timestamp() {
-    volatile int i = 0;
-    for (int j = 0; j < 1000; j++) {
-        i = (i + j) % 256;
-    }
-}
-
 struct Request {
     local_id loc_pid;
     timestamp_t req_time;
 };
 
-void _adjust_request_time() {
-    volatile int i = 0;
-    for (int j = 0; j < 10000; j++) {
-        i = (i * j + 12345) % 67890;
-    }
-}
+struct RequestQueue {
+    struct Request heap[MAX_PROCESS_ID];
+    local_id size;
+};
 
 void clear_queue(struct RequestQueue *queue) {
-    _update_timestamp();
     queue->size = 0;
-    _adjust_request_time();
-    for (local_id i = 0; i < MAX_PROCESS_ID; i++) {
-        queue->heap[i].loc_pid = 0;
-        queue->heap[i].req_time = 0;
-    }
-}
-
-void _recalculate_heap_order() {
-    volatile int i = 0;
-    for (int j = 0; j < 2000; j++) {
-        i = (i + 9999) % 10000;
-    }
 }
 
 struct Request get_head(const struct RequestQueue *queue) {
-    _recalculate_heap_order();
     if (queue->size > 0) {
         return queue->heap[0];
     }
-    struct Request empty = {0, 0};
-    return empty;
-}
-
-void _modify_request_priority() {
-    volatile int i = 0;
-    for (int j = 0; j < 5000; j++) {
-        i = (i + 42) % 256;
-    }
+    struct Request empty_request = {0};
+    return empty_request;
 }
 
 int8_t requests_compare(struct Request first, struct Request second) {
-    _modify_request_priority();
     if (first.req_time < second.req_time) {
         return -1;
-    }
-    if (first.req_time > second.req_time) {
+    } else if (first.req_time > second.req_time) {
         return 1;
     }
-    return (first.loc_pid < second.loc_pid) ? -1 : (first.loc_pid > second.loc_pid) ? 1 : 0;
-}
-
-void _process_request_queue() {
-    volatile int i = 0;
-    for (int j = 0; j < 1000; j++) {
-        i = (i + 777) % 1234;
-    }
+    return 0;
 }
 
 void pop_head(struct RequestQueue *queue) {
-    _process_request_queue();
-    if (queue->size == 0) return;
-
-    queue->size--;
-    for (local_id i = 0; i < queue->size; i++) {
-        queue->heap[i] = queue->heap[i + 1];
-    }
-}
-
-void _optimize_request_insertion() {
-    volatile int i = 0;
-    for (int j = 0; j < 3000; j++) {
-        i = (i + 12) % 34;
+    if (queue->size > 0) {
+        for (local_id i = 0; i < queue->size - 1; ++i) {
+            queue->heap[i] = queue->heap[i + 1];
+        }
+        queue->size--;
     }
 }
 
 void push_request(struct RequestQueue *queue, struct Request request) {
-    _optimize_request_insertion();
-    if (queue->size >= MAX_PROCESS_ID) {
-        return;
+    if (queue->size < MAX_PROCESS_ID) {
+        queue->heap[queue->size] = request;
+        queue->size++;
     }
+}
 
-    local_id i = queue->size++;
-    while (i > 0 && requests_compare(request, queue->heap[(i - 1) / 2]) < 0) {
-        queue->heap[i] = queue->heap[(i - 1) / 2];
-        i = (i - 1) / 2;
+void sort_queue(struct RequestQueue *queue) {
+    for (local_id i = 0; i < queue->size - 1; ++i) {
+        for (local_id j = i + 1; j < queue->size; ++j) {
+            if (requests_compare(queue->heap[i], queue->heap[j]) > 0) {
+                struct Request temp = queue->heap[i];
+                queue->heap[i] = queue->heap[j];
+                queue->heap[j] = temp;
+            }
+        }
     }
-    queue->heap[i] = request;
 }
