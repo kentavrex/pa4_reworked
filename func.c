@@ -207,48 +207,71 @@ void create_events_log_file(){
 }
 
 
-void parent_func(struct Context context){
-    for (local_id i = 1; i <= context.children; i++) context.rec_started[i] = 0;
-    context.num_started = 0;
-    for (local_id i = 1; i <= context.children; i++) context.rec_done[i] = 0;
-    context.num_done = 0;
+void initialize_received_flags(struct Context *context) {
+    for (local_id i = 1; i <= context->children; i++) context->rec_started[i] = 0;
+    context->num_started = 0;
+    for (local_id i = 1; i <= context->children; i++) context->rec_done[i] = 0;
+    context->num_done = 0;
+}
+
+void process_started_message(struct Context *context, Message *msg) {
+    if (context->num_started < context->children) {
+        if (!context->rec_started[context->msg_sender]) {
+            if (lamport_time < msg->s_header.s_local_time) lamport_time = msg->s_header.s_local_time;
+            lamport_time++;
+            context->rec_started[context->msg_sender] = 1;
+            context->num_started++;
+            if (context->num_started == context->children) {
+                printf(log_received_all_started_fmt, get_lamport_time(), context->loc_pid);
+                fprintf(context->events, log_received_all_started_fmt, get_lamport_time(), context->loc_pid);
+            }
+        }
+    }
+}
+
+void process_done_message(struct Context *context, Message *msg) {
+    if (context->num_done < context->children) {
+        if (!context->rec_done[context->msg_sender]) {
+            if (lamport_time < msg->s_header.s_local_time) lamport_time = msg->s_header.s_local_time;
+            lamport_time++;
+            context->rec_done[context->msg_sender] = 1;
+            ++context->num_done;
+            if (context->num_done == context->children) {
+                printf(log_received_all_done_fmt, get_lamport_time(), context->loc_pid);
+                fprintf(context->events, log_received_all_done_fmt, get_lamport_time(), context->loc_pid);
+            }
+        }
+    }
+}
+
+void handle_message(struct Context *context, Message *msg) {
+    switch (msg->s_header.s_type) {
+        case STARTED:
+            process_started_message(context, msg);
+            break;
+        case DONE:
+            process_done_message(context, msg);
+            break;
+        default:
+            break;
+    }
+}
+
+void wait_for_children(struct Context *context) {
+    for (local_id i = 0; i < context->children; i++) wait(NULL);
+}
+
+void parent_func(struct Context context) {
+    initialize_received_flags(&context);
+
     while (context.num_started < context.children || context.num_done < context.children) {
         Message msg;
         while (receive_any(&context, &msg)) {}
-        switch (msg.s_header.s_type) {
-            case STARTED:
-                if (context.num_started < context.children) {
-                    if (!context.rec_started[context.msg_sender]) {
-                        if (lamport_time < msg.s_header.s_local_time) lamport_time = msg.s_header.s_local_time;
-                        lamport_time++;
-                        context.rec_started[context.msg_sender] = 1;
-                        context.num_started++;
-                        if (context.num_started == context.children) {
-                            printf(log_received_all_started_fmt, get_lamport_time(), context.loc_pid);
-                            fprintf(context.events, log_received_all_started_fmt, get_lamport_time(), context.loc_pid);
-                        }
-                    }
-                }
-                break;
-            case DONE:
-                if (context.num_done < context.children) {
-                    if (!context.rec_done[context.msg_sender]) {
-                        if (lamport_time < msg.s_header.s_local_time) lamport_time = msg.s_header.s_local_time;
-                        lamport_time++;
-                        context.rec_done[context.msg_sender] = 1;
-                        ++context.num_done;
-                        if (context.num_done == context.children) {
-                            printf(log_received_all_done_fmt, get_lamport_time(), context.loc_pid);
-                            fprintf(context.events, log_received_all_done_fmt, get_lamport_time(), context.loc_pid);
-                        }
-                    }
-                }
-                break;
-            default: break;
-        }
+        handle_message(&context, &msg);
         fflush(context.events);
     }
-    for (local_id i = 0; i < context.children; i++) wait(NULL);
+
+    wait_for_children(&context);
 }
 
 // Функция для отправки STARTED сообщения
