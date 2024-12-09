@@ -78,17 +78,6 @@ static void sift_down(struct RequestQueue *queue, local_id index) {
     }
 }
 
-
-static void swap_requests(struct RequestQueue *queue, local_id i, local_id j) {
-    local_id t1 = queue->heap[i].loc_pid;
-    queue->heap[i].loc_pid = queue->heap[j].loc_pid;
-    queue->heap[j].loc_pid = t1;
-
-    timestamp_t t2 = queue->heap[i].req_time;
-    queue->heap[i].req_time = queue->heap[j].req_time;
-    queue->heap[j].req_time = t2;
-}
-
 static local_id get_parent(local_id index) {
     return (index - 1) / 2;
 }
