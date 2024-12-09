@@ -92,10 +92,11 @@ void free_pipes(const struct Pipes *pipes, local_id process_id) {
 
 struct PipeDescriptor get_pipe_descriptor(const struct Pipes *pipes, int descriptor_index) {
     struct PipeDescriptor res;
-    int pipe_index = descriptor_index / 2;
+    res.to = (descriptor_index / 2) % (pipes->size - 1);
     res.mode = descriptor_index % 2;
-    res.from = pipe_index / (pipes->size - 1);
-    res.to = pipe_index % (pipes->size - 1);
-    if (res.from <= res.to) ++res.to;
+    res.from = (descriptor_index / 2) / (pipes->size - 1);
+    if (res.from <= res.to) {
+        ++res.to;
+    }
     return res;
 }
