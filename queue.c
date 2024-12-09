@@ -79,31 +79,43 @@ static void sift_down(struct RequestQueue *queue, local_id index) {
 }
 
 
+static void swap_requests(struct RequestQueue *queue, local_id i, local_id j) {
+    local_id t1 = queue->heap[i].loc_pid;
+    queue->heap[i].loc_pid = queue->heap[j].loc_pid;
+    queue->heap[j].loc_pid = t1;
+
+    timestamp_t t2 = queue->heap[i].req_time;
+    queue->heap[i].req_time = queue->heap[j].req_time;
+    queue->heap[j].req_time = t2;
+}
+
+static local_id get_parent(local_id index) {
+    return (index - 1) / 2;
+}
+
+static bool should_swap_up(struct RequestQueue *queue, local_id index) {
+    local_id parent = get_parent(index);
+    return requests_compare(queue->heap[index], queue->heap[parent]) < 0;
+}
+
+static void move_up(struct RequestQueue *queue, local_id *index) {
+    local_id parent = get_parent(*index);
+    swap_requests(queue, *index, parent);
+    *index = parent;
+}
+
 void pop_head(struct RequestQueue *queue) {
     if (queue->size > 0) {
         --queue->size;
-        queue->heap[0].loc_pid = queue->heap[queue->size].loc_pid;
-        queue->heap[0].req_time = queue->heap[queue->size].req_time;
-        sift_down(queue, 0);
+        queue->heap[0] = queue->heap[queue->size];  // Скопировать последний элемент в корень
+        sift_down(queue, 0);  // Восстановить порядок после изменения корня
     }
 }
 
 static void sift_up(struct RequestQueue *queue, local_id index) {
     if (index > 0 && index < queue->size) {
-        while (index > 0) {
-            local_id parent = (index - 1) / 2;
-            if (requests_compare(queue->heap[index], queue->heap[parent]) < 0) {
-                local_id t1 = queue->heap[index].loc_pid;
-                queue->heap[index].loc_pid = queue->heap[parent].loc_pid;
-                queue->heap[parent].loc_pid = t1;
-                timestamp_t t2 = queue->heap[index].req_time;
-                queue->heap[index].req_time = queue->heap[parent].req_time;
-                queue->heap[parent].req_time = t2;
-                index = parent;
-            } 
-            else {
-                break;
-            }
+        while (index > 0 && should_swap_up(queue, index)) {
+            move_up(queue, &index);
         }
     }
 }
