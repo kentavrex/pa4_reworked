@@ -344,28 +344,46 @@ int handle_started_message(struct Context *context, Message *msg) {
     return 0;  // Не все процессы начали
 }
 
-// Функция для выполнения операций в цикле
+static void log_operation(struct Context *context, int16_t iteration, char *log) {
+    sprintf(log, log_loop_operation_fmt, context->loc_pid, iteration, context->loc_pid * 5);
+}
+
+static int handle_mutex_lock(struct Context *context) {
+    if (context->mutexl) {
+        int status = request_cs(context);
+        if (status) {
+            fprintf(stderr, "Child %d: request_cs() resulted %d\n", context->loc_pid, status);
+            return 100;
+        }
+    }
+    return 0;
+}
+
+static int handle_mutex_release(struct Context *context) {
+    if (context->mutexl) {
+        int status = release_cs(context);
+        if (status) {
+            fprintf(stderr, "Child %d: release_cs() resulted %d\n", context->loc_pid, status);
+            return 101;
+        }
+    }
+    return 0;
+}
+
 int perform_operations(struct Context *context) {
     for (int16_t i = 1; i <= context->loc_pid * 5; i++) {
         char log[50];
-        sprintf(log, log_loop_operation_fmt, context->loc_pid, i, context->loc_pid * 5);
-        if (context->mutexl) {
-            int status = request_cs(context);
-            if (status) {
-                fprintf(stderr, "Child %d: request_cs() resulted %d\n", context->loc_pid, status);
-                return 100;  // Ошибка при запросе критической секции
-            }
-        }
+        log_operation(context, i, log);
+
+        int status = handle_mutex_lock(context);
+        if (status) return status;
+
         print(log);
-        if (context->mutexl) {
-            int status = release_cs(context);
-            if (status) {
-                fprintf(stderr, "Child %d: release_cs() resulted %d\n", context->loc_pid, status);
-                return 101;  // Ошибка при освобождении критической секции
-            }
-        }
+
+        status = handle_mutex_release(context);
+        if (status) return status;
     }
-    return 0;  // Операции успешно выполнены
+    return 0;
 }
 
 // Функция для отправки DONE сообщения
