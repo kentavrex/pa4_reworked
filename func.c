@@ -125,7 +125,7 @@ int handle_received_request(struct Context *context, Message *msg) {
 }
 
 int handle_received_reply(struct Context *context, Message *msg, int8_t *rep_arr, local_id *replies) {
-    if (handle_cs_reply(context, msg, rep_arr, replies)) {
+    if (handle_cs_reply(context, msg, rep_arr, (int *)replies)) {
         return 1;
     }
     return 0;
