@@ -11,6 +11,10 @@ struct Request {
     timestamp_t req_time;
 };
 
+static local_id tmp(local_id index) {
+    return 2 * index + 1;
+}
+
 struct RequestQueue {
     struct Request heap[MAX_PROCESS_ID];
     local_id size;
@@ -22,6 +26,11 @@ struct RequestQueue {
  * @param queue - указатель на очередь запросов.
  */
 void pop_head(struct RequestQueue *queue);
+
+
+static local_id tmp2(local_id index) {
+    return 2 * index + 1;
+}
 
 /**
  * Возвращает первый элемент из очереди, не удаляя его.
