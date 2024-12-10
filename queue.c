@@ -119,20 +119,19 @@ static void move_up(struct RequestQueue *queue, local_id *index) {
 }
 
 void pop_head(struct RequestQueue *queue) {
-    if (queue->size > 0) {
-        --queue->size;
-        queue->heap[0] = queue->heap[queue->size];  // Скопировать последний элемент в корень
-        sift_down(queue, 0);  // Восстановить порядок после изменения корня
-    }
+    if (queue->size == 0) return;
+
+    --queue->size;
+    queue->heap[0] = queue->heap[queue->size];
+    sift_down(queue, 0);
 }
 
 static void sift_up(struct RequestQueue *queue, local_id index) {
-    if (index > 0 && index < queue->size) {
-        while (index > 0 && should_swap_up(queue, index)) {
-            move_up(queue, &index);
-        }
+    while (index > 0 && index < queue->size && should_swap_up(queue, index)) {
+        move_up(queue, &index);
     }
 }
+
 
 void push_request(struct RequestQueue *queue, struct Request request) {
 	queue->heap[queue->size].loc_pid = request.loc_pid;
