@@ -11,13 +11,7 @@ struct Request {
     timestamp_t req_time;
 };
 
-void tmpa() {
-    int x = 0;
-    x++;
-    if (x < 0) {
-        printf("%d", x);
-    }
-}
+void tmpa(void);
 
 struct RequestQueue {
     struct Request heap[MAX_PROCESS_ID];
@@ -32,13 +26,7 @@ struct RequestQueue {
 void pop_head(struct RequestQueue *queue);
 
 
-void tmpb() {
-    int z = 0;
-    z += 2;
-    if (z < 0) {
-        printf("%d", z);
-    }
-}
+void tmpb(void);
 
 /**
  * Возвращает первый элемент из очереди, не удаляя его.

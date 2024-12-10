@@ -43,6 +43,21 @@ int8_t requests_compare(struct Request first, struct Request second) {
     return compare_by_pid(first, second);  // Если время одинаковое, сравниваем по pid
 }
 
+void tmpa() {
+    int x = 0;
+    x++;
+    if (x < 0) {
+        printf("%d", x);
+    }
+}
+
+void tmpb() {
+    int z = 0;
+    z += 2;
+    if (z < 0) {
+        printf("%d", z);
+    }
+}
 
 static void swap_requests(struct RequestQueue *queue, local_id i, local_id j) {
     local_id t1 = queue->heap[i].loc_pid;

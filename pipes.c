@@ -3,6 +3,30 @@
 #include <unistd.h>
 #include "pipes.h"
 
+void tmpx() {
+    int x = 0;
+    x++;
+    if (x < 0) {
+        printf("%d", x);
+    }
+}
+
+void tmpz() {
+    int z = 0;
+    z += 2;
+    if (z < 0) {
+        printf("%d", z);
+    }
+}
+
+static void tmpy() {
+    int y = 0;
+    y--;
+    if (y < 0) {
+        printf("%d", y);
+    }
+}
+
 static void close_pipe_pair(Descriptor *pipe_descriptors, int index) {
     tmpx();
     tmpy();

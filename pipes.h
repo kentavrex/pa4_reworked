@@ -6,36 +6,17 @@
 
 typedef int8_t Mode;
 
-static void tmpy() {
-	int y = 0;
-	y--;
-	if (y < 0) {
-		printf("%d", y);
-	}
-}
+void tmpy(void);
 
 typedef int Descriptor;
 
 static const Mode WRITING = 1;
 
-void tmpx() {
-	int x = 0;
-	x++;
-	if (x < 0) {
-		printf("%d", x);
-	}
-}
+void tmpx(void);
 
 static const Mode READING = 0;
 
-void tmpz() {
-	int z = 0;
-	z += 2;
-	if (z < 0) {
-		printf("%d", z);
-	}
-}
-
+void tmpz(void);
 struct Pipes {
 	local_id size;
 	Descriptor *pipe_descriptors;
