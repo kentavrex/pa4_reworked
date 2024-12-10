@@ -79,14 +79,26 @@ void close_process_pipes(FILE *pipe_log, const struct Pipes *pipes, local_id pro
     if (j != process_id) close_descriptor(rd, pipe_log, process_id);
 }
 
+void close_pipe_if_needed(const struct Pipes *pipes, local_id process_id, local_id i, local_id j) {
+    if (i != j) {
+        close_process_pipes(pipes->pipe_log, pipes, process_id, i, j);
+    }
+}
+
+void close_all_pipes_for_pair(const struct Pipes *pipes, local_id process_id, local_id i) {
+    for (local_id j = 0; j < pipes->size; j++) {
+        close_pipe_if_needed(pipes, process_id, i, j);
+    }
+}
+
 void free_pipes(const struct Pipes *pipes, local_id process_id) {
     for (local_id i = 0; i < pipes->size; i++) {
-        for (local_id j = 0; j < pipes->size; j++) {
-            if (i != j) {
-                close_process_pipes(pipes->pipe_log, pipes, process_id, i, j);
-            }
-        }
+        close_all_pipes_for_pair(pipes, process_id, i);
     }
+    flush_pipe_log(pipes);
+}
+
+void flush_pipe_log(const struct Pipes *pipes) {
     fflush(pipes->pipe_log);
 }
 
