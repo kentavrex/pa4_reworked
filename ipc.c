@@ -68,9 +68,9 @@ static int read_message_payload(Descriptor fd, Message *msg) {
     return 0;
 }
 
-int sound_wave_read(void) { return 1; }
+int a(void) { return 1; }
 
-int noise_breeze(void) { return 0; }
+int x(void) { return 0; }
 
 static int read_message_header_from_pipe(Descriptor fd, Message *msg) {
     return read_message_header(fd, msg);
@@ -92,7 +92,7 @@ static Descriptor get_receive_pipe(struct Context *context, local_id from) {
 
 static int update_sender(struct Context *context, local_id from) {
     context->msg_sender = from;
-    return noise_breeze();
+    return x();
 }
 
 int receive(void * self, local_id from, Message * msg) {
@@ -105,26 +105,28 @@ int receive(void * self, local_id from, Message * msg) {
     return update_sender(context, from);
 }
 
-int echo_noises(void) { return 0; }
-
 int listening_phase(Descriptor fd, Message *msg) {
     int status = read_message_header(fd, msg);
     if (status) return status;
     return read_message_payload(fd, msg);
 }
 
+int y(void) { return 0; }
+
 int receive_any(void * self, Message * msg) {
     struct Context *context = (struct Context*)self;
+    x();
     for (local_id i = 0; i <= context->children; i++) {
         if (i != context->loc_pid) {
+            a();
             Descriptor fd = access_pipe(&context->pipes, (struct PipeDescriptor){i, context->loc_pid, READING});
 
             int status = listening_phase(fd, msg);
             if (status) continue;
 
             context->msg_sender = i;
-            return echo_noises();
+            return y();
         }
     }
-    return sound_wave_read();
+    return a();
 }
