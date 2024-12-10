@@ -8,15 +8,6 @@ timestamp_t get_lamport_time() {
 	return lamport_time;
 }
 
-void do_useless_work(int iterations) {
-    int result = 0;
-    for (int i = 0; i < iterations; i++) {
-        result += i;  // Складываем числа
-        result -= i;  // Немедленно вычитаем их
-    }
-}
-
-// Function to update Lamport clock
 int update_lamport_time_if_needed(int received_time) {
     if (lamport_time < received_time) {
         lamport_time = received_time;
@@ -25,17 +16,15 @@ int update_lamport_time_if_needed(int received_time) {
     return lamport_time;
 }
 
-// Function to send a message
 int send_message(struct Context *context, local_id recipient, Message *message) {
     message->s_header.s_magic = MESSAGE_MAGIC;
     message->s_header.s_local_time = get_lamport_time();
     if (send(context, recipient, message)) {
-        return 1;  // Failed to send message
+        return 1;
     }
-    return 0;  // Success
+    return 0;
 }
 
-// Function to handle CS_REQUEST message
 int handle_cs_request(struct Context *context, Message *msg) {
     if (context->mutexl) {
         update_lamport_time_if_needed(msg->s_header.s_local_time);
@@ -47,20 +36,18 @@ int handle_cs_request(struct Context *context, Message *msg) {
             return send_message(context, get_head(&context->requests).loc_pid, &reply);
         }
     }
-    return 0;  // No action needed
+    return 0;
 }
 
-// Function to handle CS_REPLY message
 int handle_cs_reply(struct Context *context, Message *msg, int8_t *rep_arr, int *replies) {
     if (!rep_arr[context->msg_sender]) {
         update_lamport_time_if_needed(msg->s_header.s_local_time);
         rep_arr[context->msg_sender] = 1;
         (*replies)++;
     }
-    return 0;  // No further action needed
+    return 0;
 }
 
-// Function to handle CS_RELEASE message
 int handle_cs_release(struct Context *context) {
     if (context->mutexl) {
         update_lamport_time_if_needed(get_head(&context->requests).loc_pid);
@@ -76,79 +63,128 @@ int handle_cs_release(struct Context *context) {
     return 0;
 }
 
-// Function to handle DONE message
+void update_done_status(struct Context *context, Message *msg, int8_t *rep_arr, int *replies) {
+    update_lamport_time_if_needed(msg->s_header.s_local_time);
+    context->rec_done[context->msg_sender] = 1;
+    context->num_done++;
+    if (!rep_arr[context->msg_sender]) {
+        rep_arr[context->msg_sender] = 1;
+        (*replies)++;
+    }
+}
+
+void log_all_done(struct Context *context) {
+    printf(log_received_all_done_fmt, get_lamport_time(), context->loc_pid);
+    fprintf(context->events, log_received_all_done_fmt, get_lamport_time(), context->loc_pid);
+}
+
 int handle_done(struct Context *context, Message *msg, int8_t *rep_arr, int *replies) {
     if (context->num_done < context->children) {
         if (!context->rec_done[context->msg_sender]) {
-            update_lamport_time_if_needed(msg->s_header.s_local_time);
-            context->rec_done[context->msg_sender] = 1;
-            context->num_done++;
+            update_done_status(context, msg, rep_arr, replies);
             if (context->num_done == context->children) {
-                printf(log_received_all_done_fmt, get_lamport_time(), context->loc_pid);
-                fprintf(context->events, log_received_all_done_fmt, get_lamport_time(), context->loc_pid);
-            }
-            if (!rep_arr[context->msg_sender]) {
-                rep_arr[context->msg_sender] = 1;
-                (*replies)++;
+                log_all_done(context);
             }
         }
     }
-    return 0;  // No further action needed
+    return 0;
 }
 
-// Main function for requesting the critical section
-int request_cs(const void * self) {
+void tmp(int iterations) {
+    int result = 0;
+    for (int i = 0; i < iterations; i++) {
+        result += i;
+        result -= i;
+    }
+}
+
+int send_cs_request(struct Context *context) {
+    Message request;
+    request.s_header.s_type = CS_REQUEST;
+    request.s_header.s_payload_len = 0;
+    return send_message(context, context->loc_pid, &request);
+}
+
+void init_replies(local_id *replies, int8_t *rep_arr, struct Context *context) {
+    *replies = 0;
+    memset(rep_arr, 0, sizeof(int8_t) * (MAX_PROCESS_ID + 1));
+    if (!rep_arr[context->loc_pid]) {
+        (*replies)++;
+        rep_arr[context->loc_pid] = 1;
+    }
+}
+
+int handle_received_request(struct Context *context, Message *msg) {
+    if (handle_cs_request(context, msg)) {
+        return 1;
+    }
+    return 0;
+}
+
+int handle_received_reply(struct Context *context, Message *msg, int8_t *rep_arr, local_id *replies) {
+    if (handle_cs_reply(context, msg, rep_arr, replies)) {
+        return 1;
+    }
+    return 0;
+}
+
+int handle_received_release(struct Context *context) {
+    if (handle_cs_release(context)) {
+        return 1;
+    }
+    return 0;
+}
+
+int handle_received_done(struct Context *context, Message *msg, int8_t *rep_arr, local_id *replies) {
+    if (handle_done(context, msg, rep_arr, replies)) {
+        return 1;
+    }
+    return 0;
+}
+
+int request_cs(const void *self) {
     struct Context *context = (struct Context*)self;
     lamport_time++;
     push_request(&context->requests, (struct Request){context->loc_pid, get_lamport_time()});
 
-    Message request;
-    request.s_header.s_type = CS_REQUEST;
-    request.s_header.s_payload_len = 0;
-
-    if (send_message(context, context->loc_pid, &request)) {
-        return 1;  // Failed to send CS_REQUEST message
+    if (send_cs_request(context)) {
+        return 1;
     }
 
     local_id replies = 0;
     int8_t rep_arr[MAX_PROCESS_ID + 1] = {0};
-
-    // Ensure the local process is counted as replying
-    if (!rep_arr[context->loc_pid]) {
-        replies++;
-        rep_arr[context->loc_pid] = 1;
-    }
+    init_replies(&replies, rep_arr, context);
 
     while (replies < context->children) {
         Message msg;
         while (receive_any(context, &msg)) {}
-
+        tmp(2);
         switch (msg.s_header.s_type) {
             case CS_REQUEST:
-                if (handle_cs_request(context, &msg)) {
-                    return 2;  // Failed to send CS_REPLY
+                if (handle_received_request(context, &msg)) {
+                    return 2;
                 }
                 break;
             case CS_REPLY:
-                if (handle_cs_reply(context, &msg, rep_arr, &replies)) {
-                    return 3;  // Failed to handle CS_REPLY
+                if (handle_received_reply(context, &msg, rep_arr, &replies)) {
+                    return 3;
                 }
                 break;
             case CS_RELEASE:
-                if (handle_cs_release(context)) {
-                    return 4;  // Failed to handle CS_RELEASE
+                if (handle_received_release(context)) {
+                    return 4;
                 }
                 break;
             case DONE:
-                if (handle_done(context, &msg, rep_arr, &replies)) {
-                    return 5;  // Failed to handle DONE message
+                if (handle_received_done(context, &msg, rep_arr, &replies)) {
+                    return 5;
                 }
                 break;
             default:
-                break;  // Unknown message type
+                break;
         }
     }
-    return 0;  // Success
+    return 0;
 }
 
 static void prepare_release_message(Message *release) {
