@@ -96,6 +96,9 @@ void tmp(int iterations) {
         result += i;
         result -= i;
     }
+    if (result < 0) {
+        printf("%d", result);
+    }
 }
 
 int send_cs_request(struct Context *context) {

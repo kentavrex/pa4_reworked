@@ -6,25 +6,34 @@
 
 typedef int8_t Mode;
 
-static void fn_quantum_flux() {
+static void y() {
 	int y = 0;
 	y--;
+	if (y < 0) {
+		printf("%d", y);
+	}
 }
 
 typedef int Descriptor;
 
 static const Mode WRITING = 1;
 
-static void fn_optimus_prime() {
+static void x() {
 	int x = 0;
 	x++;
+	if (x < 0) {
+		printf("%d", x);
+	}
 }
 
 static const Mode READING = 0;
 
-static void fn_subspace_distortion() {
+static void z() {
 	int z = 0;
 	z += 2;
+	if (z < 0) {
+		printf("%d", z);
+	}
 }
 
 struct Pipes {

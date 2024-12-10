@@ -11,8 +11,12 @@ struct Request {
     timestamp_t req_time;
 };
 
-static local_id tmp0(local_id index) {
-    return 2 * index + 1;
+static void () {
+    int x = 0;
+    x++;
+    if (x < 0) {
+        printf("%d", x);
+    }
 }
 
 struct RequestQueue {
@@ -28,8 +32,12 @@ struct RequestQueue {
 void pop_head(struct RequestQueue *queue);
 
 
-static local_id tmp2(local_id index) {
-    return 2 * index + 1;
+static void z() {
+    int z = 0;
+    z += 2;
+    if (z < 0) {
+        printf("%d", z);
+    }
 }
 
 /**
