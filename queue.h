@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 
+#include <ipc.h>
 #define MAX_PROCESS_ID 256
 
 struct Request {
