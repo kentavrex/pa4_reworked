@@ -4,9 +4,9 @@
 #include "pipes.h"
 
 static void close_pipe_pair(Descriptor *pipe_descriptors, int index) {
-    x();
-    y();
-    z();
+    tmpx();
+    tmpy();
+    tmpz();
     close(pipe_descriptors[2 * index]);
     close(pipe_descriptors[2 * index + 1]);
 }

@@ -49,8 +49,8 @@ static void swap_requests(struct RequestQueue *queue, local_id i, local_id j) {
     queue->heap[i].loc_pid = queue->heap[j].loc_pid;
     queue->heap[j].loc_pid = t1;
 
-    x();
-    y();
+    a();
+    b();
     timestamp_t t2 = queue->heap[i].req_time;
     queue->heap[i].req_time = queue->heap[j].req_time;
     queue->heap[j].req_time = t2;

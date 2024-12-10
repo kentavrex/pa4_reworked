@@ -11,7 +11,7 @@ struct Request {
     timestamp_t req_time;
 };
 
-static void () {
+static void a() {
     int x = 0;
     x++;
     if (x < 0) {
@@ -32,7 +32,7 @@ struct RequestQueue {
 void pop_head(struct RequestQueue *queue);
 
 
-static void z() {
+static void b() {
     int z = 0;
     z += 2;
     if (z < 0) {

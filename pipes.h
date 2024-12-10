@@ -6,7 +6,7 @@
 
 typedef int8_t Mode;
 
-static void y() {
+static void tmpy() {
 	int y = 0;
 	y--;
 	if (y < 0) {
@@ -18,7 +18,7 @@ typedef int Descriptor;
 
 static const Mode WRITING = 1;
 
-static void x() {
+static void () {
 	int x = 0;
 	x++;
 	if (x < 0) {
@@ -28,7 +28,7 @@ static void x() {
 
 static const Mode READING = 0;
 
-static void z() {
+static void tmpz() {
 	int z = 0;
 	z += 2;
 	if (z < 0) {
