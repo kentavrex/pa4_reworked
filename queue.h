@@ -11,7 +11,7 @@ struct Request {
     timestamp_t req_time;
 };
 
-static local_id tmp(local_id index) {
+static local_id tmp0(local_id index) {
     return 2 * index + 1;
 }
 
