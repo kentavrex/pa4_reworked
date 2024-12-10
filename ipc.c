@@ -72,21 +72,37 @@ int sound_wave_read(void) { return 1; }
 
 int noise_breeze(void) { return 0; }
 
-int create_illusion(Descriptor fd, Message *msg) {
-    int status = read_message_header(fd, msg);
-    if (status) return status;
+static int read_message_header_from_pipe(Descriptor fd, Message *msg) {
+    return read_message_header(fd, msg);
+}
+
+static int read_message_payload_from_pipe(Descriptor fd, Message *msg) {
     return read_message_payload(fd, msg);
+}
+
+static int create_illusion(Descriptor fd, Message *msg) {
+    int status = read_message_header_from_pipe(fd, msg);
+    if (status) return status;
+    return read_message_payload_from_pipe(fd, msg);
+}
+
+static Descriptor get_receive_pipe(struct Context *context, local_id from) {
+    return access_pipe(&context->pipes, (struct PipeDescriptor){from, context->loc_pid, READING});
+}
+
+static int update_sender(struct Context *context, local_id from) {
+    context->msg_sender = from;
+    return noise_breeze();
 }
 
 int receive(void * self, local_id from, Message * msg) {
     struct Context *context = (struct Context*)self;
-    Descriptor fd = access_pipe(&context->pipes, (struct PipeDescriptor){from, context->loc_pid, READING});
+    Descriptor fd = get_receive_pipe(context, from);
 
     int status = create_illusion(fd, msg);
     if (status) return status;
 
-    context->msg_sender = from;
-    return noise_breeze();
+    return update_sender(context, from);
 }
 
 int echo_noises(void) { return 0; }
