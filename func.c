@@ -282,33 +282,55 @@ void initialize_received_flags(struct Context *context) {
     context->num_done = 0;
 }
 
+int should_process_message(struct Context *context, Message *msg) {
+    return context->num_started < context->children && !context->rec_started[context->msg_sender];
+}
+
+void update_lamport_time(Message *msg) {
+    if (lamport_time < msg->s_header.s_local_time) {
+        lamport_time = msg->s_header.s_local_time;
+    }
+    lamport_time++;
+}
+
 void process_started_message(struct Context *context, Message *msg) {
-    if (context->num_started < context->children) {
-        if (!context->rec_started[context->msg_sender]) {
-            if (lamport_time < msg->s_header.s_local_time) lamport_time = msg->s_header.s_local_time;
-            lamport_time++;
-            context->rec_started[context->msg_sender] = 1;
-            context->num_started++;
-            if (context->num_started == context->children) {
-                printf(log_received_all_started_fmt, get_lamport_time(), context->loc_pid);
-                fprintf(context->events, log_received_all_started_fmt, get_lamport_time(), context->loc_pid);
-            }
-        }
+    if (!should_process_message(context, msg)) {
+        return;
+    }
+
+    update_lamport_time(msg);
+    context->rec_started[context->msg_sender] = 1;
+    context->num_started++;
+
+    if (context->num_started == context->children) {
+        printf(log_received_all_started_fmt, get_lamport_time(), context->loc_pid);
+        fprintf(context->events, log_received_all_started_fmt, get_lamport_time(), context->loc_pid);
     }
 }
 
+int should_process_done_message(struct Context *context, Message *msg) {
+    return context->num_done < context->children && !context->rec_done[context->msg_sender];
+}
+
+void update_done_lamport_time(Message *msg) {
+    if (lamport_time < msg->s_header.s_local_time) {
+        lamport_time = msg->s_header.s_local_time;
+    }
+    lamport_time++;
+}
+
 void process_done_message(struct Context *context, Message *msg) {
-    if (context->num_done < context->children) {
-        if (!context->rec_done[context->msg_sender]) {
-            if (lamport_time < msg->s_header.s_local_time) lamport_time = msg->s_header.s_local_time;
-            lamport_time++;
-            context->rec_done[context->msg_sender] = 1;
-            ++context->num_done;
-            if (context->num_done == context->children) {
-                printf(log_received_all_done_fmt, get_lamport_time(), context->loc_pid);
-                fprintf(context->events, log_received_all_done_fmt, get_lamport_time(), context->loc_pid);
-            }
-        }
+    if (!should_process_done_message(context, msg)) {
+        return;
+    }
+
+    update_done_lamport_time(msg);
+    context->rec_done[context->msg_sender] = 1;
+    ++context->num_done;
+
+    if (context->num_done == context->children) {
+        printf(log_received_all_done_fmt, get_lamport_time(), context->loc_pid);
+        fprintf(context->events, log_received_all_done_fmt, get_lamport_time(), context->loc_pid);
     }
 }
 
