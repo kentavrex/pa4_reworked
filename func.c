@@ -142,11 +142,19 @@ int handle_received_done(struct Context *context, Message *msg, int8_t *rep_arr,
     return 0;
 }
 
-int request_cs(const void *self) {
-    struct Context *context = (struct Context*)self;
+int prepare_request(struct Context *context) {
     lamport_time++;
     push_request(&context->requests, (struct Request){context->loc_pid, get_lamport_time()});
+    return send_cs_request(context);
+}
 
+void initialize_replies(local_id *replies, int8_t *rep_arr, struct Context *context) {
+    *replies = 0;
+    init_replies(replies, rep_arr, context);
+}
+
+int request_cs(const void *self) {
+    struct Context *context = (struct Context*)self;
     if (send_cs_request(context)) {
         return 1;
     }
@@ -444,17 +452,29 @@ int perform_operations(struct Context *context) {
     return 0;
 }
 
-// Функция для отправки DONE сообщения
-int send_done_message(struct Context *context) {
+int increment_lamport_time() {
     lamport_time++;
+    return lamport_time;
+}
+
+void prepare_done_message(struct Context *context, Message *done) {
+    done->s_header.s_magic = MESSAGE_MAGIC;
+    done->s_header.s_type = DONE;
+    sprintf(done->s_payload, log_done_fmt, get_lamport_time(), context->loc_pid, 0);
+    done->s_header.s_payload_len = strlen(done->s_payload);
+    done->s_header.s_local_time = get_lamport_time();
+}
+
+void log_done_message(struct Context *context, Message *done) {
+    puts(done->s_payload);
+    fputs(done->s_payload, context->events);
+}
+
+int send_done_message(struct Context *context) {
+    increment_lamport_time();
     Message done;
-    done.s_header.s_magic = MESSAGE_MAGIC;
-    done.s_header.s_type = DONE;
-    sprintf(done.s_payload, log_done_fmt, get_lamport_time(), context->loc_pid, 0);
-    done.s_header.s_payload_len = strlen(done.s_payload);
-    done.s_header.s_local_time = get_lamport_time();
-    puts(done.s_payload);
-    fputs(done.s_payload, context->events);
+    prepare_done_message(context, &done);
+    log_done_message(context, &done);
 
     if (send_multicast(context, &done)) {
         fprintf(stderr, "Child %d: failed to send DONE message\n", context->loc_pid);
@@ -462,16 +482,18 @@ int send_done_message(struct Context *context) {
         fclose(context->events);
         return 5;
     }
+
     context->rec_done[context->loc_pid] = 1;
     context->num_done++;
+
     if (context->num_done == context->children) {
         printf(log_received_all_done_fmt, get_lamport_time(), context->loc_pid);
         fprintf(context->events, log_received_all_done_fmt, get_lamport_time(), context->loc_pid);
     }
-    return 0;  // DONE сообщение отправлено успешно
+
+    return 0;
 }
 
-// Функция для обработки CS_REQUEST сообщений
 int handle_cs_request2(struct Context *context, Message *msg) {
     if (context->mutexl) {
         update_lamport_time_if_needed(msg->s_header.s_local_time);
