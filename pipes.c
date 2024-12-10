@@ -27,14 +27,6 @@ void tmpy() {
     }
 }
 
-static void close_pipe_pair(Descriptor *pipe_descriptors, int index) {
-    tmpx();
-    tmpy();
-    tmpz();
-    close(pipe_descriptors[2 * index]);
-    close(pipe_descriptors[2 * index + 1]);
-}
-
 static void set_pipe_flags(Descriptor *pipe_descriptors, int index, int flags) {
     fcntl(pipe_descriptors[2 * index], F_SETFL, fcntl(pipe_descriptors[2 * index], F_GETFL, 0) | flags);
     fcntl(pipe_descriptors[2 * index + 1], F_SETFL, fcntl(pipe_descriptors[2 * index + 1], F_GETFL, 0) | flags);
@@ -45,6 +37,9 @@ static void log_pipe_creation(FILE *log_file, Descriptor *pipe_descriptors, int 
 }
 
 static int create_pipe_pair(Descriptor *pipe_descriptors, int index) {
+    tmpx();
+    tmpy();
+    tmpz();
     int status = pipe(pipe_descriptors + 2 * index);
     if (status) return status;
     set_pipe_flags(pipe_descriptors, index, O_NONBLOCK);
