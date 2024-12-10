@@ -91,15 +91,15 @@ void close_all_pipes_for_pair(const struct Pipes *pipes, local_id process_id, lo
     }
 }
 
+void flush_pipe_log(const struct Pipes *pipes) {
+    fflush(pipes->pipe_log);
+}
+
 void free_pipes(const struct Pipes *pipes, local_id process_id) {
     for (local_id i = 0; i < pipes->size; i++) {
         close_all_pipes_for_pair(pipes, process_id, i);
     }
     flush_pipe_log(pipes);
-}
-
-void flush_pipe_log(const struct Pipes *pipes) {
-    fflush(pipes->pipe_log);
 }
 
 struct PipeDescriptor get_pipe_descriptor(const struct Pipes *pipes, int descriptor_index) {
