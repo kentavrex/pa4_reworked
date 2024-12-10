@@ -18,20 +18,34 @@ int send(void * self, local_id dst, const Message * msg) {
     return write_message_to_pipe(fd, msg, msg_length);
 }
 
-static int write_multicast_message(struct Context *context, const Message *msg, int64_t msg_length, local_id i) {
+static int64_t calculate_message_length(const Message *msg) {
+    return sizeof(MessageHeader) + msg->s_header.s_payload_len;
+}
+
+static int should_send_message(local_id i, struct Context *context) {
+    return i != context->loc_pid;
+}
+
+static int send_message_to_child(struct Context *context, const Message *msg, int64_t msg_length, local_id i) {
     Descriptor fd = access_pipe(&context->pipes, (struct PipeDescriptor){context->loc_pid, i, WRITING});
     return write_message_to_pipe(fd, msg, msg_length);
 }
 
-int send_multicast(void * self, const Message * msg) {
+static int send_multicast_message(struct Context *context, const Message *msg, int64_t msg_length, local_id i) {
+    if (should_send_message(i, context)) {
+        return send_message_to_child(context, msg, msg_length, i);
+    }
+    return 0;
+}
+
+int send_multicast(void *self, const Message *msg) {
     struct Context *context = (struct Context*)self;
-    int64_t msg_length = sizeof(MessageHeader) + msg->s_header.s_payload_len;
+    int64_t msg_length = calculate_message_length(msg);
+
     for (local_id i = 0; i <= context->children; ++i) {
-        if (i != context->loc_pid) {
-            int status = write_multicast_message(context, msg, msg_length, i);
-            if (status) {
-                return 1;
-            }
+        int status = send_multicast_message(context, msg, msg_length, i);
+        if (status) {
+            return 1;
         }
     }
     return 0;
