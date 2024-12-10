@@ -19,7 +19,7 @@ void tmpz() {
     }
 }
 
-static void tmpy() {
+void tmpy() {
     int y = 0;
     y--;
     if (y < 0) {

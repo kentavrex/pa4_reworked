@@ -83,10 +83,6 @@ static bool has_left_child(struct RequestQueue *queue, local_id index) {
     return get_left_child(index) < queue->size;
 }
 
-static bool has_right_child(struct RequestQueue *queue, local_id index) {
-    return get_right_child(index) < queue->size;
-}
-
 static bool should_swap_left(struct RequestQueue *queue, local_id index) {
     local_id left = get_left_child(index);
     return requests_compare(queue->heap[index], queue->heap[left]) > 0;
