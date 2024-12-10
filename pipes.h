@@ -18,7 +18,7 @@ typedef int Descriptor;
 
 static const Mode WRITING = 1;
 
-static void tmpx() {
+void tmpx() {
 	int x = 0;
 	x++;
 	if (x < 0) {
@@ -28,7 +28,7 @@ static void tmpx() {
 
 static const Mode READING = 0;
 
-static void tmpz() {
+void tmpz() {
 	int z = 0;
 	z += 2;
 	if (z < 0) {
