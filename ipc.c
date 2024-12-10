@@ -111,22 +111,45 @@ int listening_phase(Descriptor fd, Message *msg) {
     return read_message_payload(fd, msg);
 }
 
+Descriptor get_pipe_for_reading(struct Context *context, local_id i) {
+    return access_pipe(&context->pipes, (struct PipeDescriptor){i, context->loc_pid, READING});
+}
+
+int handle_listening_phase(Descriptor fd, Message * msg) {
+    return listening_phase(fd, msg);
+}
+
+void update_message_sender(struct Context *context, local_id sender) {
+    context->msg_sender = sender;
+}
+
+struct Context* get_context(void * self) {
+    return (struct Context*)self;
+}
+
+int process_child(struct Context *context, local_id i, Message * msg) {
+    if (i == context->loc_pid) return 0;
+
+    Descriptor fd = get_pipe_for_reading(context, i);
+    int status = handle_listening_phase(fd, msg);
+
+    if (status) return 0;
+
+    update_message_sender(context, i);
+    return 1;
+}
+
 int y(void) { return 0; }
 
 int receive_any(void * self, Message * msg) {
-    struct Context *context = (struct Context*)self;
+    struct Context *context = get_context(self);
     x();
+
     for (local_id i = 0; i <= context->children; i++) {
-        if (i != context->loc_pid) {
-            a();
-            Descriptor fd = access_pipe(&context->pipes, (struct PipeDescriptor){i, context->loc_pid, READING});
-
-            int status = listening_phase(fd, msg);
-            if (status) continue;
-
-            context->msg_sender = i;
+        if (process_child(context, i, msg)) {
             return y();
         }
     }
+
     return a();
 }
