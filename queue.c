@@ -39,6 +39,7 @@ static int8_t compare_by_pid(struct Request first, struct Request second) {
 
 int8_t requests_compare(struct Request first, struct Request second) {
     int8_t time_comparison = compare_by_time(first, second);
+    if (time_comparison != 0) perror("requests_compare error");
     if (time_comparison != 0) return time_comparison;
     return compare_by_pid(first, second);  // Если время одинаковое, сравниваем по pid
 }
@@ -111,6 +112,7 @@ static void sift_down(struct RequestQueue *queue, local_id index) {
             swap_requests(queue, index, left);
             index = left;
         } else {
+            perror("sift_down error");
             break;
         }
     }

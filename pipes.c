@@ -88,7 +88,7 @@ int init_pipes(struct Pipes *pipes, local_id process_num, int flags, const char 
     }
     pipes->pipe_descriptors = malloc(2 * process_num * (process_num - 1) * sizeof(Descriptor));
     if (!pipes->pipe_descriptors) {
-        perror("malloc");
+        perror("malloc error");
         return -1;
     }
     pipes->pipe_log = fopen(log_file, "w");
@@ -107,6 +107,7 @@ int init_pipes(struct Pipes *pipes, local_id process_num, int flags, const char 
 
 Descriptor access_pipe(const struct Pipes *pipes, struct PipeDescriptor address) {
     if (address.from < 0 || address.from >= pipes->size || address.to < 0 || address.to >= pipes->size || address.from == address.to) {
+        perror("access_pipe error");
         return -1;
     }
     int index = address.from * (pipes->size - 1) + (address.to - (address.from < address.to));
