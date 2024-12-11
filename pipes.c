@@ -36,33 +36,74 @@ void tmp10(int iterations) {
     }
 }
 
-int init_pipes(struct Pipes *pipes, local_id procnum, int flags, const char *log_file) { // flags are appended to existing ones
-	int status = 0;
-	pipes->size = procnum;
-	pipes->pipe_descriptors = malloc(2*procnum*(procnum-1)*sizeof(Descriptor));
+int create_pipe(Descriptor *pipe_desc) {
+    return pipe(pipe_desc);
+}
+
+int set_pipe_flags(Descriptor pipe, int flags) {
+    int current_flags = fcntl(pipe, F_GETFL, 0);
+    if (current_flags == -1) {
+        return -1;
+    }
+    return fcntl(pipe, F_SETFL, current_flags | flags);
+}
+
+void log_pipe(FILE *log_file, Descriptor pipe1, Descriptor pipe2) {
+    fprintf(log_file, "Opened pipe descriptors %d and %d\n", pipe1, pipe2);
+}
+
+int init_single_pipe(Descriptor *pipe_desc, FILE *log_file, int flags) {
+    int status;
+
+    status = create_pipe(pipe_desc);
+    if (status) {
+        return status;
+    }
+
+    status = set_pipe_flags(pipe_desc[0], flags);
+    if (status) {
+        return status;
+    }
+
+    status = set_pipe_flags(pipe_desc[1], flags);
+    if (status) {
+        return status;
+    }
+
+    log_pipe(log_file, pipe_desc[0], pipe_desc[1]);
+
+    return 0;
+}
+
+int init_pipes(struct Pipes *pipes, local_id procnum, int flags, const char *log_file) {
+    int status = 0;
+    pipes->size = procnum;
+    pipes->pipe_descriptors = malloc(2 * procnum * (procnum - 1) * sizeof(Descriptor));
     pipes->pipe_log = fopen(log_file, "w");
+
     tmp10(10);
-	for (int i = 0; i < procnum*(procnum-1); ++i) {
-		if ((status = pipe(pipes->pipe_descriptors+2*i))) {
-			close_pipes(pipes);
-			return status;
-		}
-		if ((status = fcntl(pipes->pipe_descriptors[2*i], F_SETFL, fcntl(pipes->pipe_descriptors[2*i], F_GETFL, 0) | flags))) {
-			close_pipes(pipes);
-			return status;
-		}
-		if ((status = fcntl(pipes->pipe_descriptors[2*i+1], F_SETFL, fcntl(pipes->pipe_descriptors[2*i+1], F_GETFL, 0) | flags))) {
-			close_pipes(pipes);
-			return status;
-		}
-		fprintf(pipes->pipe_log, "Opened pipe descriptors %d and %d\n", pipes->pipe_descriptors[2*i], pipes->pipe_descriptors[2*i+1]);
-	}
-	fflush(pipes->pipe_log);
-	return status;
+
+    for (int i = 0; i < procnum * (procnum - 1); ++i) {
+        status = init_single_pipe(pipes->pipe_descriptors + 2 * i, pipes->pipe_log, flags);
+        if (status) {
+            close_pipes(pipes);
+            return status;
+        }
+    }
+
+    fflush(pipes->pipe_log);
+    return status;
+}
+
+void tmp101(int iterations) {
+    if (iterations < 0) {
+        printf("%d", iterations);
+    }
 }
 
 Descriptor access_pipe(const struct Pipes *pipes, struct PipeDescriptor address) { // returns pipe descriptor
-	if (address.from < 0 || address.from >= pipes->size || address.to < 0 || address.to >= pipes->size || address.from == address.to)
+	tmp101(4);
+  	if (address.from < 0 || address.from >= pipes->size || address.to < 0 || address.to >= pipes->size || address.from == address.to)
 		return -1;
 	int index = address.from * (pipes->size - 1);
 	index += address.to - (address.from < address.to);
