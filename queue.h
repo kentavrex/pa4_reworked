@@ -4,7 +4,7 @@
 #include <stdint.h>
 
 #include "ipc.h"
-#define MAX_PROCESS_ID 256
+#define MAX_PROCESS_ID 16
 
 struct Request {
     local_id loc_pid;
