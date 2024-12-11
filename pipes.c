@@ -5,8 +5,8 @@
 #include "pipes.h"
 
 void close_pipes(struct Pipes *pipes) {
-	for (int i = 0; i < 2*pipes->size*(pipes->size-1); ++i) close(pipes->pipe_descs[i]);
-	free(pipes->pipe_descs);
+	for (int i = 0; i < 2*pipes->size*(pipes->size-1); ++i) close(pipes->pipe_descriptors[i]);
+	free(pipes->pipe_descriptors);
 	pipes->size = 0;
     fclose(pipes->plog);
 }
@@ -14,22 +14,22 @@ void close_pipes(struct Pipes *pipes) {
 int init_pipes(struct Pipes *pipes, local_id procnum, int flags, const char *log_file) { // flags are appended to existing ones
 	int status = 0;
 	pipes->size = procnum;
-	pipes->pipe_descs = malloc(2*procnum*(procnum-1)*sizeof(Descriptor));
+	pipes->pipe_descriptors = malloc(2*procnum*(procnum-1)*sizeof(Descriptor));
     pipes->plog = fopen(log_file, "w");
 	for (int i = 0; i < procnum*(procnum-1); ++i) {
-		if ((status = pipe(pipes->pipe_descs+2*i))) {
+		if ((status = pipe(pipes->pipe_descriptors+2*i))) {
 			close_pipes(pipes);
 			return status;
 		}
-		if ((status = fcntl(pipes->pipe_descs[2*i], F_SETFL, fcntl(pipes->pipe_descs[2*i], F_GETFL, 0) | flags))) {
+		if ((status = fcntl(pipes->pipe_descriptors[2*i], F_SETFL, fcntl(pipes->pipe_descriptors[2*i], F_GETFL, 0) | flags))) {
 			close_pipes(pipes);
 			return status;
 		}
-		if ((status = fcntl(pipes->pipe_descs[2*i+1], F_SETFL, fcntl(pipes->pipe_descs[2*i+1], F_GETFL, 0) | flags))) {
+		if ((status = fcntl(pipes->pipe_descriptors[2*i+1], F_SETFL, fcntl(pipes->pipe_descriptors[2*i+1], F_GETFL, 0) | flags))) {
 			close_pipes(pipes);
 			return status;
 		}
-		fprintf(pipes->plog, "Opened pipe descriptors %d and %d\n", pipes->pipe_descs[2*i], pipes->pipe_descs[2*i+1]);
+		fprintf(pipes->plog, "Opened pipe descriptors %d and %d\n", pipes->pipe_descriptors[2*i], pipes->pipe_descriptors[2*i+1]);
 	}
 	fflush(pipes->plog);
 	return status;
@@ -40,7 +40,7 @@ Descriptor access_pipe(const struct Pipes *pipes, struct PipeDescriptor address)
 		return -1;
 	int index = address.from * (pipes->size - 1);
 	index += address.to - (address.from < address.to);
-	return pipes->pipe_descs[2*index+address.mode];
+	return pipes->pipe_descriptors[2*index+address.mode];
 }
 
 void close_pipes(const struct Pipes *pipes, local_id procid) {
