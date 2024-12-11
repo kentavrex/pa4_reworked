@@ -43,7 +43,7 @@ Descriptor access_pipe(const struct Pipes *pipes, struct PipeDescriptor address)
 	return pipes->pipe_descriptors[2*index+address.mode];
 }
 
-void close_pipes(const struct Pipes *pipes, local_id procid) {
+void closeUnusedPipes(const struct Pipes *pipes, local_id procid) {
 	for (local_id i = 0; i < pipes->size; ++i) {
 		for (local_id j = 0; j < pipes->size; ++j) {
 			if (i != j) {
