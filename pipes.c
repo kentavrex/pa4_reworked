@@ -8,14 +8,14 @@ void close_pipes(struct Pipes *pipes) {
 	for (int i = 0; i < 2*pipes->size*(pipes->size-1); ++i) close(pipes->pipe_descriptors[i]);
 	free(pipes->pipe_descriptors);
 	pipes->size = 0;
-    fclose(pipes->plog);
+    fclose(pipes->pipe_log);
 }
 
 int init_pipes(struct Pipes *pipes, local_id procnum, int flags, const char *log_file) { // flags are appended to existing ones
 	int status = 0;
 	pipes->size = procnum;
 	pipes->pipe_descriptors = malloc(2*procnum*(procnum-1)*sizeof(Descriptor));
-    pipes->plog = fopen(log_file, "w");
+    pipes->pipe_log = fopen(log_file, "w");
 	for (int i = 0; i < procnum*(procnum-1); ++i) {
 		if ((status = pipe(pipes->pipe_descriptors+2*i))) {
 			close_pipes(pipes);
@@ -29,9 +29,9 @@ int init_pipes(struct Pipes *pipes, local_id procnum, int flags, const char *log
 			close_pipes(pipes);
 			return status;
 		}
-		fprintf(pipes->plog, "Opened pipe descriptors %d and %d\n", pipes->pipe_descriptors[2*i], pipes->pipe_descriptors[2*i+1]);
+		fprintf(pipes->pipe_log, "Opened pipe descriptors %d and %d\n", pipes->pipe_descriptors[2*i], pipes->pipe_descriptors[2*i+1]);
 	}
-	fflush(pipes->plog);
+	fflush(pipes->pipe_log);
 	return status;
 }
 
@@ -51,16 +51,16 @@ void close_pipes(const struct Pipes *pipes, local_id procid) {
                 Descriptor wr = access_pipe(pipes, (struct PipeDescriptor){i, j, WRITING});
 				if (i != procid) {
                     close(wr);
-                    fprintf(pipes->plog, "Process %d closed pipe descriptor %d\n", procid, wr);
+                    fprintf(pipes->pipe_log, "Process %d closed pipe descriptor %d\n", procid, wr);
                 }
 				if (j != procid) {
                     close(rd);
-                    fprintf(pipes->plog, "Process %d closed pipe descriptor %d\n", procid, rd);
+                    fprintf(pipes->pipe_log, "Process %d closed pipe descriptor %d\n", procid, rd);
                 }
 			}
 		}
 	}
-	fflush(pipes->plog);
+	fflush(pipes->pipe_log);
 }
 
 struct PipeDescriptor get_pipe_descriptor(const struct Pipes *pipes, int desc_index) {
