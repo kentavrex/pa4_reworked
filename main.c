@@ -36,7 +36,8 @@ int fork_children(struct Context *context) {
         pid_t pid = fork();
         if (pid == 0) {
             context->loc_pid = i;
-            return 0; // В процессе ребенка продолжаем выполнение
+            free_pipes(&context->pipes, i);
+            return 0;
         }
         if (pid < 0) {
             fprintf(stderr, "Parent: failed to create child process %d\n", i);
@@ -44,8 +45,10 @@ int fork_children(struct Context *context) {
             fclose(context->events);
             return 3;
         }
-        context->loc_pid = PARENT_ID;
     }
+    context->loc_pid = PARENT_ID;
+    free_pipes(&context->pipes, PARENT_ID);
+
     return 0;
 }
 
