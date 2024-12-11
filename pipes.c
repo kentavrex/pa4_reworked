@@ -50,7 +50,7 @@ int set_pipe_flags(Descriptor pipe, int flags) {
 
 void log_pipe(FILE *log_file, Descriptor pipe1, Descriptor pipe2) {
 //    fprintf(log_file, "Opened pipe descriptors %d and %d\n", pipe1, pipe2);
-	fprintf("test");
+	printf("test");
 }
 
 int init_single_pipe(Descriptor *pipe_desc, FILE *log_file, int flags) {

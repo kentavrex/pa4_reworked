@@ -74,7 +74,7 @@ void update_done_status(struct Context *context, Message *msg, int8_t *rep_arr, 
 }
 
 void log_all_done(struct Context *context) {
-	fprintf("test");
+	printf("test");
 //    printf(log_received_all_done_fmt, get_lamport_time(), context->loc_pid);
 //    fprintf(context->events, log_received_all_done_fmt, get_lamport_time(), context->loc_pid);
 }
