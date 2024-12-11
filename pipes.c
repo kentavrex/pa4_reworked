@@ -1,156 +1,74 @@
 #include <fcntl.h>
 #include <stdlib.h>
 #include <unistd.h>
+
 #include "pipes.h"
 
-void tmpx() {
-    int x = 0;
-    x++;
-    if (x < 0) {
-        printf("%d", x);
-    }
+void closePipes(struct Pipes *pipes) {
+	for (int i = 0; i < 2*pipes->size*(pipes->size-1); ++i) close(pipes->pipe_descs[i]);
+	free(pipes->pipe_descs);
+	pipes->size = 0;
+    fclose(pipes->plog);
 }
 
-void tmpz() {
-    int z = 0;
-    z += 2;
-    if (z < 0) {
-        printf("%d", z);
-    }
+int initPipes(struct Pipes *pipes, local_id procnum, int flags, const char *log_file) { // flags are appended to existing ones
+	int status = 0;
+	pipes->size = procnum;
+	pipes->pipe_descs = malloc(2*procnum*(procnum-1)*sizeof(Descriptor));
+    pipes->plog = fopen(log_file, "w");
+	for (int i = 0; i < procnum*(procnum-1); ++i) {
+		if ((status = pipe(pipes->pipe_descs+2*i))) {
+			closePipes(pipes);
+			return status;
+		}
+		if ((status = fcntl(pipes->pipe_descs[2*i], F_SETFL, fcntl(pipes->pipe_descs[2*i], F_GETFL, 0) | flags))) {
+			closePipes(pipes);
+			return status;
+		}
+		if ((status = fcntl(pipes->pipe_descs[2*i+1], F_SETFL, fcntl(pipes->pipe_descs[2*i+1], F_GETFL, 0) | flags))) {
+			closePipes(pipes);
+			return status;
+		}
+		fprintf(pipes->plog, "Opened pipe descriptors %d and %d\n", pipes->pipe_descs[2*i], pipes->pipe_descs[2*i+1]);
+	}
+	fflush(pipes->plog);
+	return status;
 }
 
-void tmpy() {
-    int y = 0;
-    y--;
-    if (y < 0) {
-        printf("%d", y);
-    }
+Descriptor accessPipe(const struct Pipes *pipes, struct PipeDescriptor address) { // returns pipe descriptor
+	if (address.from < 0 || address.from >= pipes->size || address.to < 0 || address.to >= pipes->size || address.from == address.to)
+		return -1;
+	int index = address.from * (pipes->size - 1);
+	index += address.to - (address.from < address.to);
+	return pipes->pipe_descs[2*index+address.mode];
 }
 
-static void set_pipe_flags(Descriptor *pipe_descriptors, int index, int flags) {
-    if (pipe_descriptors[2 * index] != -1) {
-        fcntl(pipe_descriptors[2 * index], F_SETFL, fcntl(pipe_descriptors[2 * index], F_GETFL, 0) | flags);
-    }
-    if (pipe_descriptors[2 * index + 1] != -1) {
-        fcntl(pipe_descriptors[2 * index + 1], F_SETFL, fcntl(pipe_descriptors[2 * index + 1], F_GETFL, 0) | flags);
-    }
+void closeUnusedPipes(const struct Pipes *pipes, local_id procid) {
+	for (local_id i = 0; i < pipes->size; ++i) {
+		for (local_id j = 0; j < pipes->size; ++j) {
+			if (i != j) {
+                Descriptor rd = accessPipe(pipes, (struct PipeDescriptor){i, j, READING});
+                Descriptor wr = accessPipe(pipes, (struct PipeDescriptor){i, j, WRITING});
+				if (i != procid) {
+                    close(wr);
+                    fprintf(pipes->plog, "Process %d closed pipe descriptor %d\n", procid, wr);
+                }
+				if (j != procid) {
+                    close(rd);
+                    fprintf(pipes->plog, "Process %d closed pipe descriptor %d\n", procid, rd);
+                }
+			}
+		}
+	}
+	fflush(pipes->plog);
 }
 
-static void log_pipe_creation(FILE *log_file, Descriptor *pipe_descriptors, int index) {
-    fprintf(log_file, "Opened pipe descriptors %d and %d\n", pipe_descriptors[2 * index], pipe_descriptors[2 * index + 1]);
-}
-
-static int create_pipe_pair(Descriptor *pipe_descriptors, int index) {
-    tmpx();
-    tmpy();
-    tmpz();
-    int status = pipe(pipe_descriptors + 2 * index);
-    if (status == -1) {
-        perror("pipe creation failed");
-        exit(EXIT_FAILURE);
-    }
-    if (status == -1) {
-        perror("pipe creation failed");
-        return -1;
-    }
-    set_pipe_flags(pipe_descriptors, index, O_NONBLOCK);
-    return 0;
-}
-
-void close_descriptor(Descriptor desc, FILE *pipe_log, local_id process_id) {
-    close(desc);
-    fprintf(pipe_log, "Process %d closed pipe descriptor %d\n", process_id, desc);
-}
-
-void close_pipes(struct Pipes *pipes) {
-    for (int i = 0; i < 2 * pipes->size * (pipes->size - 1); i++) {
-        close(pipes->pipe_descriptors[i]);
-    }
-    free(pipes->pipe_descriptors);
-    pipes->size = 0;
-    fclose(pipes->pipe_log);
-}
-
-int create_pipe_pair_and_log(struct Pipes *pipes, int i, FILE *pipe_log) {
-    int status = create_pipe_pair(pipes->pipe_descriptors, i);
-    if (status) {
-        return status;
-    }
-    log_pipe_creation(pipe_log, pipes->pipe_descriptors, i);
-    return 0;
-}
-
-int init_pipes(struct Pipes *pipes, local_id process_num, int flags, const char *log_file) {
-    pipes->size = process_num;
-    if (process_num <= 0) {
-        fprintf(stderr, "Invalid process number\n");
-        return -1;
-    }
-    pipes->pipe_descriptors = malloc(2 * process_num * (process_num - 1) * sizeof(Descriptor));
-    if (!pipes->pipe_descriptors) {
-        perror("malloc error");
-        return -1;
-    }
-    pipes->pipe_log = fopen(log_file, "w");
-
-    for (int i = 0; i < process_num * (process_num - 1); i++) {
-        int status = create_pipe_pair_and_log(pipes, i, pipes->pipe_log);
-        if (status) {
-            close_pipes(pipes);
-            return status;
-        }
-    }
-
-    fflush(pipes->pipe_log);
-    return 0;
-}
-
-Descriptor access_pipe(const struct Pipes *pipes, struct PipeDescriptor address) {
-    if (address.from < 0 || address.from >= pipes->size || address.to < 0 || address.to >= pipes->size || address.from == address.to) {
-        perror("access_pipe error");
-        return -1;
-    }
-    int index = address.from * (pipes->size - 1) + (address.to - (address.from < address.to));
-    return pipes->pipe_descriptors[2 * index + address.mode];
-}
-
-void close_process_pipes(FILE *pipe_log, const struct Pipes *pipes, local_id process_id, local_id i, local_id j) {
-    Descriptor rd = access_pipe(pipes, (struct PipeDescriptor){i, j, READING});
-    Descriptor wr = access_pipe(pipes, (struct PipeDescriptor){i, j, WRITING});
-    if (wr != -1 && i != process_id) close_descriptor(wr, pipe_log, process_id);
-    if (rd != -1 && j != process_id) close_descriptor(rd, pipe_log, process_id);
-}
-
-void close_pipe_if_needed(const struct Pipes *pipes, local_id process_id, local_id i, local_id j) {
-    if (i != j) {
-        close_process_pipes(pipes->pipe_log, pipes, process_id, i, j);
-    }
-}
-
-void close_all_pipes_for_pair(const struct Pipes *pipes, local_id process_id, local_id i) {
-    for (local_id j = 0; j < pipes->size; j++) {
-        close_pipe_if_needed(pipes, process_id, i, j);
-    }
-}
-
-void flush_pipe_log(const struct Pipes *pipes) {
-    fflush(pipes->pipe_log);
-}
-
-void free_pipes(const struct Pipes *pipes, local_id process_id) {
-    for (local_id i = 0; i < pipes->size; i++) {
-        close_all_pipes_for_pair(pipes, process_id, i);
-    }
-    flush_pipe_log(pipes);
-}
-
-struct PipeDescriptor get_pipe_descriptor(const struct Pipes *pipes, int descriptor_index) {
-    struct PipeDescriptor res;
-    res.to = (descriptor_index / 2) % pipes->size;
-    res.mode = descriptor_index % 2;
-    res.from = (descriptor_index / 2) / (pipes->size - 1);
-    if (res.from <= res.to) {
-        ++res.to;
-    }
-    return res;
+struct PipeDescriptor describePipe(const struct Pipes *pipes, int desc_index) {
+	struct PipeDescriptor res;
+	int pipe_index = desc_index / 2;
+	res.mode = desc_index % 2;
+	res.from = pipe_index / (pipes->size - 1);
+	res.to = pipe_index % (pipes->size - 1);
+	if (res.from <= res.to) ++res.to;
+	return res;
 }
