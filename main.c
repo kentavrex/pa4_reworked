@@ -40,7 +40,7 @@ int fork_children(struct Context *context) {
             return 0;
         }
         if (pid < 0) {
-            fprintf(stderr, "The parent error: failed to create the child process %d\n", i);
+//            fprintf(stderr, "The parent error: failed to create the child process %d\n", i);
             close_pipes(&context->pipes);
             fclose(context->events);
             return 3;

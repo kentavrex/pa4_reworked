@@ -74,8 +74,9 @@ void update_done_status(struct Context *context, Message *msg, int8_t *rep_arr, 
 }
 
 void log_all_done(struct Context *context) {
-    printf(log_received_all_done_fmt, get_lamport_time(), context->loc_pid);
-    fprintf(context->events, log_received_all_done_fmt, get_lamport_time(), context->loc_pid);
+    fprintf("Test %d\n", 0);
+//    printf(log_received_all_done_fmt, get_lamport_time(), context->loc_pid);
+//    fprintf(context->events, log_received_all_done_fmt, get_lamport_time(), context->loc_pid);
 }
 
 int handle_done(struct Context *context, Message *msg, int8_t *rep_arr, int *replies) {
@@ -269,7 +270,7 @@ static void parse_mute_and_pid_args(int argc, char *argv[], struct Context *cont
 
 int parse_args(int argc, char *argv[], struct Context *context) {
     if (argc < 3) {
-        fprintf(stderr, "Usage: %s [--mutexl] -p N [--mutexl]\n", argv[0]);
+//        fprintf(stderr, "Usage: %s [--mutexl] -p N [--mutexl]\n", argv[0]);
         return 1;
     }
 
@@ -315,7 +316,7 @@ void process_started_message(struct Context *context, Message *msg) {
 
     if (context->num_started == context->children) {
         printf(log_received_all_started_fmt, get_lamport_time(), context->loc_pid);
-        fprintf(context->events, log_received_all_started_fmt, get_lamport_time(), context->loc_pid);
+//        fprintf(context->events, log_received_all_started_fmt, get_lamport_time(), context->loc_pid);
     }
 }
 
@@ -341,7 +342,7 @@ void process_done_message(struct Context *context, Message *msg) {
 
     if (context->num_done == context->children) {
         printf(log_received_all_done_fmt, get_lamport_time(), context->loc_pid);
-        fprintf(context->events, log_received_all_done_fmt, get_lamport_time(), context->loc_pid);
+//        fprintf(context->events, log_received_all_done_fmt, get_lamport_time(), context->loc_pid);
     }
 }
 
@@ -387,7 +388,7 @@ int send_started_message(struct Context *context) {
     fputs(started.s_payload, context->events);
 
     if (send_multicast(context, &started)) {
-        fprintf(stderr, "The child %d error: failed to send the STARTED message in send_started_message\n", context->loc_pid);
+//        fprintf(stderr, "The child %d error: failed to send the STARTED message in send_started_message\n", context->loc_pid);
         close_pipes(&context->pipes);
         fclose(context->events);
         return 4;
@@ -403,7 +404,7 @@ int handle_started_message(struct Context *context, Message *msg) {
             context->num_started++;
             if (context->num_started == context->children) {
                 printf(log_received_all_started_fmt, get_lamport_time(), context->loc_pid);
-                fprintf(context->events, log_received_all_started_fmt, get_lamport_time(), context->loc_pid);
+//                fprintf(context->events, log_received_all_started_fmt, get_lamport_time(), context->loc_pid);
                 return 1;  // Все процессы начали
             }
         }
@@ -419,7 +420,7 @@ static int handle_mutex_lock(struct Context *context) {
     if (context->mutexl) {
         int status = request_cs(context);
         if (status) {
-            fprintf(stderr, "The child %d error: request_cs() resulted %d in handle_mutex_lock\n", context->loc_pid, status);
+//            fprintf(stderr, "The child %d error: request_cs() resulted %d in handle_mutex_lock\n", context->loc_pid, status);
             return 100;
         }
     }
@@ -430,7 +431,7 @@ static int handle_mutex_release(struct Context *context) {
     if (context->mutexl) {
         int status = release_cs(context);
         if (status) {
-            fprintf(stderr, "The child %d error: release_cs() resulted %d in handle_mutex_release\n", context->loc_pid, status);
+//            fprintf(stderr, "The child %d error: release_cs() resulted %d in handle_mutex_release\n", context->loc_pid, status);
             return 101;
         }
     }
@@ -478,7 +479,7 @@ int send_done_message(struct Context *context) {
     log_done_message(context, &done);
 
     if (send_multicast(context, &done)) {
-        fprintf(stderr, "The child %d error: failed to send thr DONE message\n", context->loc_pid);
+//        fprintf(stderr, "The child %d error: failed to send thr DONE message\n", context->loc_pid);
         close_pipes(&context->pipes);
         fclose(context->events);
         return 5;
@@ -489,7 +490,7 @@ int send_done_message(struct Context *context) {
 
     if (context->num_done == context->children) {
         printf(log_received_all_done_fmt, get_lamport_time(), context->loc_pid);
-        fprintf(context->events, log_received_all_done_fmt, get_lamport_time(), context->loc_pid);
+//        fprintf(context->events, log_received_all_done_fmt, get_lamport_time(), context->loc_pid);
     }
 
     return 0;
@@ -566,7 +567,7 @@ void handle_done2(struct Context *context, Message *msg) {
             context->num_done++;
             if (context->num_done == context->children) {
                 printf(log_received_all_done_fmt, get_lamport_time(), context->loc_pid);
-                fprintf(context->events, log_received_all_done_fmt, get_lamport_time(), context->loc_pid);
+//                fprintf(context->events, log_received_all_done_fmt, get_lamport_time(), context->loc_pid);
             }
         }
     }
