@@ -46,8 +46,8 @@ int fork_children(struct Context *context) {
             return 3;
         }
         context->loc_pid = PARENT_ID;
-        free_pipes(&context->pipes, PARENT_ID);
     }
+    free_pipes(&context->pipes, PARENT_ID);
 
     return 0;
 }
