@@ -375,7 +375,6 @@ void parent_func(struct Context context) {
     wait_for_children(&context);
 }
 
-// Функция для отправки STARTED сообщения
 int send_started_message(struct Context *context) {
     lamport_time++;
     Message started;
@@ -388,15 +387,14 @@ int send_started_message(struct Context *context) {
     fputs(started.s_payload, context->events);
 
     if (send_multicast(context, &started)) {
-        fprintf(stderr, "Child %d: failed to send STARTED message\n", context->loc_pid);
+        fprintf(stderr, "The child %d error: failed to send the STARTED message in send_started_message\n", context->loc_pid);
         close_pipes(&context->pipes);
         fclose(context->events);
         return 4;
     }
-    return 0;  // Сообщение успешно отправлено
+    return 0;
 }
 
-// Функция для обработки STARTED сообщений
 int handle_started_message(struct Context *context, Message *msg) {
     if (context->num_started < context->children) {
         if (!context->rec_started[context->msg_sender]) {
@@ -421,7 +419,7 @@ static int handle_mutex_lock(struct Context *context) {
     if (context->mutexl) {
         int status = request_cs(context);
         if (status) {
-            fprintf(stderr, "Child %d: request_cs() resulted %d\n", context->loc_pid, status);
+            fprintf(stderr, "The child %d error: request_cs() resulted %d in handle_mutex_lock\n", context->loc_pid, status);
             return 100;
         }
     }
@@ -432,7 +430,7 @@ static int handle_mutex_release(struct Context *context) {
     if (context->mutexl) {
         int status = release_cs(context);
         if (status) {
-            fprintf(stderr, "Child %d: release_cs() resulted %d\n", context->loc_pid, status);
+            fprintf(stderr, "The child %d error: release_cs() resulted %d in handle_mutex_release\n", context->loc_pid, status);
             return 101;
         }
     }
@@ -480,7 +478,7 @@ int send_done_message(struct Context *context) {
     log_done_message(context, &done);
 
     if (send_multicast(context, &done)) {
-        fprintf(stderr, "Child %d: failed to send DONE message\n", context->loc_pid);
+        fprintf(stderr, "The child %d error: failed to send thr DONE message\n", context->loc_pid);
         close_pipes(&context->pipes);
         fclose(context->events);
         return 5;

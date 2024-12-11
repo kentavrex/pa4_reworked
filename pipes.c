@@ -120,7 +120,7 @@ Descriptor get_writing_descriptor(const struct Pipes *pipes, local_id i, local_i
 
 void close_descriptor(Descriptor desc, local_id procid, FILE *pipe_log) {
     close(desc);
-    fprintf(pipe_log, "Process %d closed pipe descriptor %d\n", procid, desc);
+    fprintf(pipe_log, "The process %d was closed pipe descriptor %d\n", procid, desc);
 }
 
 void check_and_close_descriptor(Descriptor desc, local_id i, local_id procid, FILE *pipe_log) {

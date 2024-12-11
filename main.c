@@ -17,14 +17,14 @@ timestamp_t lamport_time = 0;
 
 int create_pipes_and_log(struct Context *context) {
     if (init_pipes(&context->pipes, context->children + 1, O_NONBLOCK, pipes_log)) {
-        fputs("Parent: failed to create pipes\n", stderr);
+        fputs("The parent: failed to create pipes in create_pipes_and_log\n", stderr);
         return 2;
     }
 
     create_events_log_file();
     context->events = fopen(events_log, "a");
     if (context->events == NULL) {
-        fputs("Parent: failed to create event log\n", stderr);
+        fputs("The parent error: failed to create the event log in create_pipes_and_log\n", stderr);
         return 2;
     }
 
@@ -40,7 +40,7 @@ int fork_children(struct Context *context) {
             return 0;
         }
         if (pid < 0) {
-            fprintf(stderr, "Parent: failed to create child process %d\n", i);
+            fprintf(stderr, "The parent error: failed to create the child process %d\n", i);
             close_pipes(&context->pipes);
             fclose(context->events);
             return 3;
