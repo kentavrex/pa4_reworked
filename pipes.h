@@ -2,30 +2,39 @@
 #define __PIPES__H
 
 #include <stdio.h>
-
 #include "ipc.h"
 
-typedef int Descriptor;
 typedef int8_t Mode;
 
-static const Mode READING = 0;
+void tmpy(void);
+
+typedef int Descriptor;
+
 static const Mode WRITING = 1;
 
+void tmpx(void);
+
+static const Mode READING = 0;
+
+void tmpz(void);
+struct Pipes {
+	local_id size;
+	Descriptor *pipe_descriptors;
+	FILE *pipe_log;
+};
+
 struct PipeDescriptor {
-	local_id from, to;
+	local_id from;
+	local_id to;
 	Mode mode;
 };
 
-struct Pipes { // fully-connected network
-	local_id size; // number of processes
-	Descriptor *pipe_descs; // should not be accessed directly
-	FILE *plog; // pipe logger
-};
+int init_pipes(struct Pipes *pipes, local_id process_num, int flags, const char *log_file);
 
-void closePipes(struct Pipes *pipes);
-int initPipes(struct Pipes *pipes, local_id procnum, int flags, const char *log_file); // flags are appended to existing ones
-Descriptor accessPipe(const struct Pipes *pipes, struct PipeDescriptor address); // returns pipe descriptor
-void closeUnusedPipes(const struct Pipes *pipes, local_id procid);
-struct PipeDescriptor describePipe(const struct Pipes *pipes, int desc_index);
+void close_pipes(struct Pipes *pipes);
+Descriptor access_pipe(const struct Pipes *pipes, struct PipeDescriptor address);
+
+void free_pipes(const struct Pipes *pipes, local_id process_id);
+struct PipeDescriptor get_pipe_descriptor(const struct Pipes *pipes, int descriptor_index);
 
 #endif
