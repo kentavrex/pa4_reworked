@@ -4,11 +4,30 @@
 
 #include "pipes.h"
 
+void close_pipe_descriptor(int pipe_descriptor) {
+    close(pipe_descriptor);
+}
+
+void free_pipe_descriptors(struct Pipes *pipes) {
+    free(pipes->pipe_descriptors);
+}
+
+void reset_pipe_size(struct Pipes *pipes) {
+    pipes->size = 0;
+}
+
+void close_pipe_log(FILE *pipe_log) {
+    fclose(pipe_log);
+}
+
 void close_pipes(struct Pipes *pipes) {
-	for (int i = 0; i < 2*pipes->size*(pipes->size-1); ++i) close(pipes->pipe_descriptors[i]);
-	free(pipes->pipe_descriptors);
-	pipes->size = 0;
-    fclose(pipes->pipe_log);
+    for (int i = 0; i < 2 * pipes->size * (pipes->size - 1); ++i) {
+        close_pipe_descriptor(pipes->pipe_descriptors[i]);
+    }
+
+    free_pipe_descriptors(pipes);
+    reset_pipe_size(pipes);
+    close_pipe_log(pipes->pipe_log);
 }
 
 int init_pipes(struct Pipes *pipes, local_id procnum, int flags, const char *log_file) { // flags are appended to existing ones
