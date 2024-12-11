@@ -80,9 +80,6 @@ int init_pipes(struct Pipes *pipes, local_id procnum, int flags, const char *log
     pipes->size = procnum;
     pipes->pipe_descriptors = malloc(2 * procnum * (procnum - 1) * sizeof(Descriptor));
     pipes->pipe_log = fopen(log_file, "w");
-
-    tmp10(10);
-
     for (int i = 0; i < procnum * (procnum - 1); ++i) {
         status = init_single_pipe(pipes->pipe_descriptors + 2 * i, pipes->pipe_log, flags);
         if (status) {
@@ -150,7 +147,6 @@ void tmp11(int iterations) {
 }
 
 void process_all_pairs(const struct Pipes *pipes, local_id procid) {
-  	tmp11(1);
     for (local_id i = 0; i < pipes->size; ++i) {
         for (local_id j = 0; j < pipes->size; ++j) {
             close_pipe_for_proc_pair(pipes, i, j, procid);
@@ -163,18 +159,11 @@ void free_pipes(const struct Pipes *pipes, local_id procid) {
     fflush(pipes->pipe_log);  // Очистка буфера
 }
 
-void tmp12(int iterations) {
-    if (iterations < 0) {
-        printf("%d", iterations);
-    }
-}
-
 struct PipeDescriptor get_pipe_descriptor(const struct Pipes *pipes, int desc_index) {
 	struct PipeDescriptor res;
 	int pipe_index = desc_index / 2;
 	res.mode = desc_index % 2;
 	res.from = pipe_index / (pipes->size - 1);
-    tmp12(12);
 	res.to = pipe_index % (pipes->size - 1);
 	if (res.from <= res.to) ++res.to;
 	return res;
