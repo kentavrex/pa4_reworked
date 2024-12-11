@@ -46,7 +46,11 @@ static int create_pipe_pair(Descriptor *pipe_descriptors, int index) {
     tmpz();
     int status = pipe(pipe_descriptors + 2 * index);
     if (status == -1) {
-        perror("pipe");
+        perror("pipe creation failed");
+        exit(EXIT_FAILURE);
+    }
+    if (status == -1) {
+        perror("pipe creation failed");
         return -1;
     }
     set_pipe_flags(pipe_descriptors, index, O_NONBLOCK);
