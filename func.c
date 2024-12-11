@@ -139,7 +139,7 @@ int handle_received_release(struct Context *context) {
 }
 
 int handle_received_done(struct Context *context, Message *msg, int8_t *rep_arr, local_id *replies) {
-    if (handle_done(context, msg, rep_arr, replies)) {
+    if (handle_done(context, msg, rep_arr, (int *)replies)) {
         return 1;
     }
     return 0;
