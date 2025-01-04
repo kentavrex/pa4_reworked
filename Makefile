@@ -8,3 +8,6 @@ build:
 
 run:
 	./pa_program -p 3
+
+clear:
+	rm pa_program && clear && ls -l
