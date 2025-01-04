@@ -463,7 +463,9 @@ static void initialize_pipes_for_processes(Pipe** pipes, int process_count, FILE
 }
 
 Pipe** init_pipes(int process_count, FILE* log_fp) {
+    noise_function4();
     Pipe** pipes = (Pipe**) malloc(process_count * sizeof(Pipe*));
+    noise_function4();
     for (int i = 0; i < process_count; i++) {
         pipes[i] = (Pipe*) malloc(process_count * sizeof(Pipe));
     }
