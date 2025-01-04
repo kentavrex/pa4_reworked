@@ -1,4 +1,3 @@
-
 #include "util.h"
 #include "pipes_manager.h"
 #include "cs.h"
@@ -315,76 +314,102 @@ int send_message(Process *proc, MessageType msg_type) {
     return handle_message_type(msg_type, current_time, proc);
 }
 
-int check_all_received(Process* process, MessageType type) {
-   int count = 0;
-   for (int i = 1; i < process->num_process; i++)
-   {
-       if (i != process->pid) {
-           Message msg;
-           while (receive(process, i, &msg)) {}
-           if (msg.s_header.s_type == type) {
-           update_lamport_time(msg.s_header.s_local_time);
-               count++;
-               printf("Process %d readed %d messages with type %s\n",
-                   process->pid, count, type == 0 ? "STARTED" : "DONE");
-           }
-       }
-   }
-   if (process->pid != 0 && count == process->num_process-2) {
-       return 0;
-   } else if (process->pid == 0 && count == process->num_process - 1) {
-       return 0;
-   }
-   return -1;
+int receive_message(Process* process, int i, Message* msg) {
+    while (receive(process, i, msg)) {}
+    return msg->s_header.s_type;
 }
 
+void process_message2(Process* process, Message* msg, int* count, MessageType type) {
+    if (msg->s_header.s_type == type) {
+        update_lamport_time(msg->s_header.s_local_time);
+        (*count)++;
+        printf("Process %d readed %d messages with type %s\n",
+            process->pid, *count, type == 0 ? "STARTED" : "DONE");
+    }
+}
+
+int check_received_for_pid(Process* process, MessageType type, int* count) {
+    for (int i = 1; i < process->num_process; i++) {
+        if (i != process->pid) {
+            Message msg;
+            int msg_type = receive_message(process, i, &msg);
+            if (msg_type == type) {
+                process_message2(process, &msg, count, type);
+            }
+        }
+    }
+    return *count;
+}
+
+int check_all_received(Process* process, MessageType type) {
+    int count = 0;
+    count = check_received_for_pid(process, type, &count);
+
+    if ((process->pid != 0 && count == process->num_process - 2) ||
+        (process->pid == 0 && count == process->num_process - 1)) {
+        return 0;
+        }
+    return -1;
+}
+
+static int set_pipe_nonblocking(int pipe_fd[2]) {
+    int flags_read = fcntl(pipe_fd[READ], F_GETFL);
+    int flags_write = fcntl(pipe_fd[WRITE], F_GETFL);
+
+    if (flags_read == -1 || flags_write == -1) {
+        perror("Error retrieving flags for pipe");
+        return ERR;
+    }
+
+    if (fcntl(pipe_fd[READ], F_SETFL, flags_read | O_NONBLOCK) == -1) {
+        perror("Failed to set non-blocking mode for read end of pipe");
+        return ERR;
+    }
+
+    if (fcntl(pipe_fd[WRITE], F_SETFL, flags_write | O_NONBLOCK) == -1) {
+        perror("Failed to set non-blocking mode for write end of pipe");
+        return ERR;
+    }
+
+    return OK;
+}
+
+static void log_pipe_initialization(FILE* log_fp, int src, int dest, int fd_write, int fd_read) {
+    fprintf(log_fp, "Pipe initialized: from process %d to process %d (write: %d, read: %d)\n",
+            src, dest, fd_write, fd_read);
+}
+
+static int create_pipe(Pipe* pipe) {
+    if (pipe(pipe->fd) != 0) {
+        perror("Pipe creation failed");
+        return ERR;
+    }
+
+    return set_pipe_nonblocking(pipe->fd);
+}
+
+static void initialize_pipes_for_processes(Pipe** pipes, int process_count, FILE* log_fp) {
+    for (int src = 0; src < process_count; src++) {
+        for (int dest = 0; dest < process_count; dest++) {
+            if (src == dest) {
+                continue;
+            }
+
+            if (create_pipe(&pipes[src][dest]) != OK) {
+                exit(EXIT_FAILURE);
+            }
+
+            log_pipe_initialization(log_fp, src, dest, pipes[src][dest].fd[WRITE], pipes[src][dest].fd[READ]);
+        }
+    }
+}
 
 Pipe** init_pipes(int process_count, FILE* log_fp) {
-
     Pipe** pipes = (Pipe**) malloc(process_count * sizeof(Pipe*));
-
     for (int i = 0; i < process_count; i++) {
         pipes[i] = (Pipe*) malloc(process_count * sizeof(Pipe));
     }
 
-
-    for (int src = 0; src < process_count; src++) {
-        for (int dest = 0; dest < process_count; dest++) {
-            if (src == dest) {
-                continue; 
-            }
-
-
-            if (pipe(pipes[src][dest].fd) != 0) {
-                perror("Pipe creation failed");
-                exit(EXIT_FAILURE);
-            }
-
-
-            int flags_read = fcntl(pipes[src][dest].fd[READ], F_GETFL);
-            int flags_write = fcntl(pipes[src][dest].fd[WRITE], F_GETFL);
-
-            if (flags_read == -1 || flags_write == -1) {
-                perror("Error retrieving flags for pipe");
-                exit(EXIT_FAILURE);
-            }
-
-
-            if (fcntl(pipes[src][dest].fd[READ], F_SETFL, flags_read | O_NONBLOCK) == -1) {
-                perror("Failed to set non-blocking mode for read end of pipe");
-                exit(EXIT_FAILURE);
-            }
-
-            if (fcntl(pipes[src][dest].fd[WRITE], F_SETFL, flags_write | O_NONBLOCK) == -1) {
-                perror("Failed to set non-blocking mode for write end of pipe");
-                exit(EXIT_FAILURE);
-            }
-
-
-            fprintf(log_fp, "Pipe initialized: from process %d to process %d (write: %d, read: %d)\n", 
-                    src, dest, pipes[src][dest].fd[WRITE], pipes[src][dest].fd[READ]);
-        }
-    }
-
+    initialize_pipes_for_processes(pipes, process_count, log_fp);
     return pipes;
 }
