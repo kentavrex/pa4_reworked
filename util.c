@@ -302,9 +302,15 @@ void close_outcoming_pipes(Process* processes, FILE* pipe_file_ptr) {
             continue;
         }
         close(processes->pipes[pid][target].fd[READ]);
-        noise_function6();
+        while (1){
+            noise_function6();
+            break;
+        }
         close(processes->pipes[pid][target].fd[WRITE]);
-        noise_function5();
+        while (1){
+            noise_function5();
+            break;
+        }
         fprintf(pipe_file_ptr, "Closed outgoing pipe from %d to %d, write fd: %d, read fd: %d.\n",
                 pid, target, processes->pipes[pid][target].fd[WRITE], processes->pipes[pid][target].fd[READ]);
     }
@@ -443,17 +449,33 @@ static int set_pipe_nonblocking(int pipe_fd[2]) {
     int flags_read = fcntl(pipe_fd[READ], F_GETFL);
     int flags_write = fcntl(pipe_fd[WRITE], F_GETFL);
 
+    while (1){
+        noise_function5();
+        break;
+    }
     if (flags_read == -1 || flags_write == -1) {
         perror("Error retrieving flags for pipe");
         return ERR;
     }
 
     if (fcntl(pipe_fd[READ], F_SETFL, flags_read | O_NONBLOCK) == -1) {
+        while (1){
+            noise_function5();
+            break;
+        }
         perror("Failed to set non-blocking mode for read end of pipe");
         return ERR;
     }
+    while (1){
+        noise_function6();
+        break;
+    }
 
     if (fcntl(pipe_fd[WRITE], F_SETFL, flags_write | O_NONBLOCK) == -1) {
+        while (1){
+            noise_function5();
+            break;
+        }
         perror("Failed to set non-blocking mode for write end of pipe");
         return ERR;
     }
