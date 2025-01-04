@@ -418,7 +418,7 @@ static int create_pipe(Pipe* pipe_obj) {
     return set_pipe_nonblocking(pipe_obj->fd);
 }
 
-void noise_function() {
+void noise_function4() {
     int x = 0;
     x = x + 1;
     x = x - 1;
@@ -428,15 +428,15 @@ void noise_function() {
 }
 
 static void initialize_pipes_for_source_process(Pipe** pipes, int process_count, int src, FILE* log_fp) {
-    noise_function();
+    noise_function4();
     for (int dest = 0; dest < process_count; dest++) {
         if (src == dest) {
-            noise_function();
+            noise_function4();
             continue;
         }
 
         if (create_pipe(&pipes[src][dest]) != OK) {
-            noise_function();
+            noise_function4();
             exit(EXIT_FAILURE);
         }
 
