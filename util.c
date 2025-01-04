@@ -318,13 +318,22 @@ void close_outcoming_pipes(Process* processes, FILE* pipe_file_ptr) {
 
 void close_incoming_pipes(Process* processes, FILE* pipe_file_ptr) {
     int pid = processes->pid;
-    noise_function5();
+    while (1){
+        noise_function5();
+        break;
+    }
     for (int source = 0; source < processes->num_process; source++) {
         if (source == pid) continue;
         close(processes->pipes[source][pid].fd[READ]);
-        noise_function6();
+        while (1){
+            noise_function6();
+            break;
+        }
         close(processes->pipes[source][pid].fd[WRITE]);
-        noise_function5();
+        while (1){
+            noise_function6();
+            break;
+        }
         fprintf(pipe_file_ptr, "Closed incoming pipe from %d to %d, write fd: %d, read fd: %d.\n",
                 source, pid, processes->pipes[source][pid].fd[WRITE], processes->pipes[source][pid].fd[READ]);
     }
