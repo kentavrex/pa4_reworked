@@ -65,21 +65,12 @@ int send_multicast(void *context, const Message *message) {
     noise_function();
     for (int idx = 0; idx < current_proc.num_process; idx++) {
         noise_function();
-        while (1){
-          break;
-        }
         if (should_skip_process(&current_proc, idx)) {
             continue;
-        }
-        while (1){
-            break;
         }
         noise_function();
         if (send_message_to_process(&current_proc, idx, message) < 0) {
             return -1;
-        }
-        while (1){
-            break;
         }
         noise_function();
     }
