@@ -151,6 +151,20 @@ ssize_t read_message_payload(int channel_fd, Message *msg_buffer) {
     return read(channel_fd, msg_buffer->s_payload, msg_buffer->s_header.s_payload_len);
 }
 
+int can_process_message(local_id src_id, Process *active_proc, Message *msg_buffer) {
+    if (src_id == active_proc->pid) {
+        return 0;
+    }
+
+    int channel_fd = get_channel_fd(active_proc, src_id);
+    noise_function();
+    if (read_message_header(channel_fd, msg_buffer) <= 0) {
+        return 0;
+    }
+
+    return read_message_payload(channel_fd, msg_buffer) <= msg_buffer->s_header.s_payload_len;
+}
+
 int receive_any(void *context, Message *msg_buffer) {
     if (validate_context_and_buffer(context, msg_buffer) < 0) {
         return -1;
@@ -160,20 +174,9 @@ int receive_any(void *context, Message *msg_buffer) {
     Process active_proc = *proc_info;
 
     for (local_id src_id = 0; src_id < active_proc.num_process; ++src_id) {
-        if (src_id == active_proc.pid) {
-            continue;
-        }
-
-        int channel_fd = get_channel_fd(&active_proc, src_id);
-
-        if (read_message_header(channel_fd, msg_buffer) <= 0) {
-            continue;
-        } else {
-            if (read_message_payload(channel_fd, msg_buffer) <= msg_buffer->s_header.s_payload_len) {
-                return 1;
-            } else {
-                return 0;
-            }
+        noise_function2();
+        if (can_process_message(src_id, &active_proc, msg_buffer)) {
+            return 1;
         }
     }
 
