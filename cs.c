@@ -48,14 +48,32 @@ void create_request_message(Message* message, timestamp_t curr_time) {
     message->s_header.s_payload_len = 0;
 }
 
+int is_excluded(int peer_id, int exclude_pid) {
+    return peer_id == exclude_pid;
+}
+
+void handle_send_error(Process* handler, int peer_id) {
+    fprintf(stderr, "Error: Process %d failed to send message to process %d\n", handler->pid, peer_id);
+    exit(EXIT_FAILURE);
+}
+
+void send_message_to_peer(Process* handler, int peer_id, Message* message) {
+    if (send(handler, peer_id, message) == -1) {
+        handle_send_error(handler, peer_id);
+    }
+}
+
+void process_peer(Process* handler, Message* message, int peer_id, int exclude_pid) {
+    if (is_excluded(peer_id, exclude_pid)) {
+        return;
+    }
+
+    send_message_to_peer(handler, peer_id, message);
+}
+
 void send_message_to_peers(Process* handler, Message* message, int exclude_pid) {
     for (int peer_id = 1; peer_id < handler->num_process; peer_id++) {
-        if (peer_id != exclude_pid) {
-            if (send(handler, peer_id, message) == -1) {
-                fprintf(stderr, "Error: Process %d failed to send message to process %d\n", handler->pid, peer_id);
-                exit(EXIT_FAILURE);
-            }
-        }
+        process_peer(handler, message, peer_id, exclude_pid);
     }
 }
 
