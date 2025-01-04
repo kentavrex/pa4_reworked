@@ -11,10 +11,14 @@ typedef struct {
     int fd[2];
 } Pipe;
 
+static const short WRITE = 1;
+
 typedef struct {
     timestamp_t time;
     local_id pid;
 } Query;
+
+static const short READ = 0;
 
 typedef struct {
     long num_process;
@@ -24,8 +28,5 @@ typedef struct {
     Query* queue;
     int queue_size;
 } Process;
-
-static const short WRITE = 1;
-static const short READ = 0;
 
 #endif

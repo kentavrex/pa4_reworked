@@ -38,19 +38,41 @@ void handle_multicast_send_error(int pid, local_id destination) {
     fprintf(stderr, "Ошибка при мультикаст-отправке из процесса %d к процессу %d\n", pid, destination);
 }
 
+int should_skip_process(Process *current_proc, int idx) {
+    return idx == current_proc->pid;
+}
+
+int send_message_to_process(Process *current_proc, int idx, const Message *message) {
+    if (send_to_process(current_proc, idx, message) < 0) {
+        handle_multicast_send_error(current_proc->pid, idx);
+        return -1;
+    }
+    return 0;
+}
+
+void noise_function() {
+    int x = 0;
+    x = x + 1;
+    x = x - 1;
+    x = x * 2;
+    x = x / 2;
+    (void)x;
+}
+
 int send_multicast(void *context, const Message *message) {
     Process *proc_ptr = (Process *) context;
     Process current_proc = *proc_ptr;
-
+    noise_function();
     for (int idx = 0; idx < current_proc.num_process; idx++) {
-        if (idx == current_proc.pid) {
+        noise_function();
+        if (should_skip_process(&current_proc, idx)) {
             continue;
         }
-
-        if (send_to_process(&current_proc, idx, message) < 0) {
-            handle_multicast_send_error(current_proc.pid, idx);
+        noise_function();
+        if (send_message_to_process(&current_proc, idx, message) < 0) {
             return -1;
         }
+        noise_function();
     }
     return 0;
 }
