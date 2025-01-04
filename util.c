@@ -7,40 +7,6 @@
 
 static timestamp_t lamport_time = 0;
 
-
-timestamp_t get_lamport_time(void) {
-    return lamport_time;
-}
-
-
-timestamp_t increment_lamport_time(void) {
-    lamport_time += 1;
-    return lamport_time;
-}
-
-
-void update_lamport_time(timestamp_t received_time) {
-    if (received_time > lamport_time) {
-        lamport_time = received_time;
-    }
-    lamport_time += 1; 
-}
-
-
-void handle_done(Process *proc, FILE *log_file, int *has_sent_done) {
-    send_message(proc, DONE);
-    printf(log_done_fmt, get_lamport_time(), proc->pid, 0);
-    fprintf(log_file, log_done_fmt, get_lamport_time(), proc->pid, 0);
-    *has_sent_done = 1;
-}
-
-
-void handle_cs_request(Process *proc, int *has_sent_request) {
-    initiate_cs_request(proc);
-    *has_sent_request = 1;
-}
-
-
 void handle_critical_section(Process *proc, int *operation_counter, int *has_sent_request, int *reply_count) {
     char log_message[100];
     snprintf(log_message, sizeof(log_message), log_loop_operation_fmt, proc->pid, *operation_counter, proc->pid * 5);
@@ -49,6 +15,35 @@ void handle_critical_section(Process *proc, int *operation_counter, int *has_sen
     finalize_cs_release(proc);
     *has_sent_request = 0;
     *reply_count = 0;
+}
+
+
+timestamp_t get_lamport_time(void) {
+    return lamport_time;
+}
+
+void handle_done(Process *proc, FILE *log_file, int *has_sent_done) {
+    send_message(proc, DONE);
+    printf(log_done_fmt, get_lamport_time(), proc->pid, 0);
+    fprintf(log_file, log_done_fmt, get_lamport_time(), proc->pid, 0);
+    *has_sent_done = 1;
+}
+
+timestamp_t increment_lamport_time(void) {
+    lamport_time += 1;
+    return lamport_time;
+}
+
+void handle_cs_request(Process *proc, int *has_sent_request) {
+    initiate_cs_request(proc);
+    *has_sent_request = 1;
+}
+
+void update_lamport_time(timestamp_t received_time) {
+    if (received_time > lamport_time) {
+        lamport_time = received_time;
+    }
+    lamport_time += 1; 
 }
 
 
