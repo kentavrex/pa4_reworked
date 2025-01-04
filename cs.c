@@ -4,7 +4,7 @@
 #include <unistd.h>
 #include "cs.h"
 
-int sort_requests(const void* left, const void* right) {
+int compare_by_time(const void* left, const void* right) {
     Query* first_req = (Query*) left;
     Query* second_req = (Query*) right;
 
@@ -14,18 +14,29 @@ int sort_requests(const void* left, const void* right) {
     return (first_req->time < second_req->time) ? -1 : 1;
 }
 
-void enqueue_request(Process* handler, Query request) {
+void add_request_to_queue(Process* handler, Query request) {
     handler->queue[handler->queue_size] = request;
     handler->queue_size++;
+}
 
-    qsort(handler->queue, handler->queue_size, sizeof(Query), sort_requests);
+void sort_queue(Process* handler) {
+    qsort(handler->queue, handler->queue_size, sizeof(Query), compare_by_time);
+}
+
+void enqueue_request(Process* handler, Query request) {
+    add_request_to_queue(handler, request);
+    sort_queue(handler);
+}
+
+void shift_queue(Process* handler) {
+    for (int idx = 0; idx < handler->queue_size - 1; idx++) {
+        handler->queue[idx] = handler->queue[idx + 1];
+    }
 }
 
 void dequeue_request(Process* handler) {
     if (handler->queue_size > 0) {
-        for (int idx = 0; idx < handler->queue_size - 1; idx++) {
-            handler->queue[idx] = handler->queue[idx + 1];
-        }
+        shift_queue(handler);
         handler->queue_size--;
     }
 }
