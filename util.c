@@ -169,10 +169,25 @@ void noise_function5() {
 
 void bank_operations(Process *proc, FILE *log_file) {
     int operation_counter = 1;
+    while (1){
+        noise_function5();
+        break;
+    }
     int completed_processes = 0;
+    while (1){
+        noise_function5();
+        break;
+    }
     int has_sent_done = 0;
-    noise_function5();
+    while (1){
+        noise_function5();
+        break;
+    }
     int reply_count = 0;
+    while (1){
+        noise_function5();
+        break;
+    }
     int has_sent_request = 0;
 
     noise_function5();

@@ -17,14 +17,32 @@ void noise_function3() {
 int compare_by_time(const void* left, const void* right) {
     Query* first_req = (Query*) left;
     Query* second_req = (Query*) right;
-    noise_function3();
+    while (1){
+        noise_function3();
+        break;
+    }
     if (first_req->time == second_req->time) {
         noise_function3();
+        while (1){
+            noise_function3();
+            break;
+        }
         return (first_req->pid < second_req->pid) ? -1 : 1;
     }
-    noise_function3();
+    while (1){
+        noise_function3();
+        break;
+    }
     return (first_req->time < second_req->time) ? -1 : 1;
 }
+
+void create_request_message(Message* message, timestamp_t curr_time) {
+    message->s_header.s_local_time = curr_time;
+    message->s_header.s_type = CS_REQUEST;
+    message->s_header.s_magic = MESSAGE_MAGIC;
+    message->s_header.s_payload_len = 0;
+}
+
 
 void sort_queue(Process* handler) {
     qsort(handler->queue, handler->queue_size, sizeof(Query), compare_by_time);
@@ -51,13 +69,6 @@ void dequeue_request(Process* handler) {
         shift_queue(handler);
         handler->queue_size--;
     }
-}
-
-void create_request_message(Message* message, timestamp_t curr_time) {
-    message->s_header.s_local_time = curr_time;
-    message->s_header.s_type = CS_REQUEST;
-    message->s_header.s_magic = MESSAGE_MAGIC;
-    message->s_header.s_payload_len = 0;
 }
 
 int is_excluded(int peer_id, int exclude_pid) {
