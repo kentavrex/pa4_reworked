@@ -52,7 +52,7 @@ void bank_operations(Process *proc, FILE *log_file) {
         }
 
         if (operation_counter <= proc->pid * 5 && !has_sent_request) {
-            send_critical_section_request(proc);
+            initiate_cs_request(proc);
             has_sent_request = 1;
             continue;
         }
@@ -62,7 +62,7 @@ void bank_operations(Process *proc, FILE *log_file) {
             snprintf(log_message, sizeof(log_message), log_loop_operation_fmt, proc->pid, operation_counter, proc->pid * 5);
             print(log_message);
             operation_counter++;
-            send_critical_section_release(proc);
+            finalize_cs_release(proc);
             has_sent_request = 0;
             reply_count = 0;
             continue;
@@ -77,7 +77,7 @@ void bank_operations(Process *proc, FILE *log_file) {
                     switch (incoming_msg.s_header.s_type) {
                         case CS_REQUEST: {
                             Query new_request = {.pid = src_id, .time = incoming_msg.s_header.s_local_time};
-                            add_request_to_queue(proc, new_request);
+                            enqueue_request(proc, new_request);
 
                             Message reply_msg = {
                                 .s_header = {
@@ -99,7 +99,7 @@ void bank_operations(Process *proc, FILE *log_file) {
                             break;
                         }
                         case CS_RELEASE: {
-                            remove_request_from_queue(proc);
+                            dequeue_request(proc);
                             break;
                         }
                         case DONE: {
