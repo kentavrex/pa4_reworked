@@ -28,6 +28,126 @@ void update_lamport_time(timestamp_t received_time) {
 }
 
 
+void handle_done(Process *proc, FILE *log_file, int *has_sent_done) {
+    send_message(proc, DONE);
+    printf(log_done_fmt, get_lamport_time(), proc->pid, 0);
+    fprintf(log_file, log_done_fmt, get_lamport_time(), proc->pid, 0);
+    *has_sent_done = 1;
+}
+
+
+void handle_cs_request(Process *proc, int *has_sent_request) {
+    initiate_cs_request(proc);
+    *has_sent_request = 1;
+}
+
+
+void handle_critical_section(Process *proc, int *operation_counter, int *has_sent_request, int *reply_count) {
+    char log_message[100];
+    snprintf(log_message, sizeof(log_message), log_loop_operation_fmt, proc->pid, *operation_counter, proc->pid * 5);
+    print(log_message);
+    (*operation_counter)++;
+    finalize_cs_release(proc);
+    *has_sent_request = 0;
+    *reply_count = 0;
+}
+
+
+void handle_request(Process *proc, local_id src_id, const Message *incoming_msg) {
+    Query new_request = {.pid = src_id, .time = incoming_msg->s_header.s_local_time};
+    enqueue_request(proc, new_request);
+
+    Message reply_msg = {
+        .s_header = {
+            .s_magic = MESSAGE_MAGIC,
+            .s_local_time = increment_lamport_time(),
+            .s_type = CS_REPLY,
+            .s_payload_len = 0
+        }
+    };
+
+    if (send(proc, new_request.pid, &reply_msg) != 0) {
+        fprintf(stderr, "Error: Unable to send CS_REPLY from process %d to process %d\n", proc->pid, src_id);
+        exit(EXIT_FAILURE);
+    }
+}
+
+
+void handle_reply(int *reply_count) {
+    (*reply_count)++;
+}
+
+
+void handle_release(Process *proc) {
+    dequeue_request(proc);
+}
+
+
+void handle_done2(int *completed_processes) {
+    (*completed_processes)++;
+}
+
+
+void process_message(Process *proc, local_id src_id, Message *incoming_msg, int *reply_count, int *completed_processes) {
+    update_lamport_time(incoming_msg->s_header.s_local_time);
+
+    switch (incoming_msg->s_header.s_type) {
+        case CS_REQUEST:
+            handle_request(proc, src_id, incoming_msg);
+        break;
+        case CS_REPLY:
+            handle_reply(reply_count);
+        break;
+        case CS_RELEASE:
+            handle_release(proc);
+        break;
+        case DONE:
+            handle_done2(completed_processes);
+        break;
+        default:
+            fprintf(stderr, "Warning: Received unknown message type from process %d\n", src_id);
+        break;
+    }
+}
+
+
+void process_incoming_message(Process *proc, int *reply_count, int *completed_processes) {
+    Message incoming_msg;
+    for (local_id src_id = 0; src_id < proc->num_process; src_id++) {
+        if (src_id != proc->pid && !receive(proc, src_id, &incoming_msg)) {
+            process_message(proc, src_id, &incoming_msg, reply_count, completed_processes);
+        }
+    }
+}
+
+
+void check_all_done(Process *proc, FILE *log_file, int *completed_processes, int *has_sent_done, int operation_counter) {
+    if (*has_sent_done && *completed_processes == proc->num_process - 2 && operation_counter > proc->pid * 5) {
+        printf(log_received_all_done_fmt, get_lamport_time(), proc->pid);
+        fprintf(log_file, log_received_all_done_fmt, get_lamport_time(), proc->pid);
+        exit(0);
+    }
+}
+
+void send_done_if_needed(Process *proc, FILE *log_file, int operation_counter, int *has_sent_done, int *has_sent_request) {
+    if (!(*has_sent_done) && operation_counter > proc->pid * 5) {
+        handle_done(proc, log_file, has_sent_done);
+        *has_sent_request = 0;
+    }
+}
+
+void send_request_if_needed(Process *proc, int operation_counter, int *has_sent_request) {
+    if (operation_counter <= proc->pid * 5 && !(*has_sent_request)) {
+        handle_cs_request(proc, has_sent_request);
+    }
+}
+
+void execute_critical_section_if_ready(Process *proc, int *operation_counter, int *has_sent_request, int *reply_count) {
+    if (*has_sent_request && proc->queue[0].pid == proc->pid && *reply_count == proc->num_process - 2) {
+        handle_critical_section(proc, operation_counter, has_sent_request, reply_count);
+    }
+}
+
 void bank_operations(Process *proc, FILE *log_file) {
     int completed_processes = 0;
     int operation_counter = 1;
@@ -36,85 +156,23 @@ void bank_operations(Process *proc, FILE *log_file) {
     int reply_count = 0;
 
     while (1) {
-        if (has_sent_done && completed_processes == proc->num_process - 2 && operation_counter > proc->pid * 5) {
-            printf(log_received_all_done_fmt, get_lamport_time(), proc->pid);
-            fprintf(log_file, log_received_all_done_fmt, get_lamport_time(), proc->pid);
-            return;
-        }
+        // Проверяем, все ли процессы завершили работу
+        check_all_done(proc, log_file, &completed_processes, &has_sent_done, operation_counter);
 
-        if (!has_sent_done && operation_counter > proc->pid * 5) {
-            send_message(proc, DONE);
-            printf(log_done_fmt, get_lamport_time(), proc->pid, 0);
-            fprintf(log_file, log_done_fmt, get_lamport_time(), proc->pid, 0);
-            has_sent_done = 1;
-            has_sent_request = 0;
-            continue;
-        }
+        // Отправляем сообщение DONE, если выполнение завершено
+        send_done_if_needed(proc, log_file, operation_counter, &has_sent_done, &has_sent_request);
 
-        if (operation_counter <= proc->pid * 5 && !has_sent_request) {
-            initiate_cs_request(proc);
-            has_sent_request = 1;
-            continue;
-        }
+        // Отправляем запрос на вход в критическую секцию, если нужно
+        send_request_if_needed(proc, operation_counter, &has_sent_request);
 
-        if (has_sent_request && proc->queue[0].pid == proc->pid && reply_count == proc->num_process - 2) {
-            char log_message[100];
-            snprintf(log_message, sizeof(log_message), log_loop_operation_fmt, proc->pid, operation_counter, proc->pid * 5);
-            print(log_message);
-            operation_counter++;
-            finalize_cs_release(proc);
-            has_sent_request = 0;
-            reply_count = 0;
-            continue;
-        }
+        // Выполняем критическую секцию, если готовы
+        execute_critical_section_if_ready(proc, &operation_counter, &has_sent_request, &reply_count);
 
-        Message incoming_msg;
-        for (local_id src_id = 0; src_id < proc->num_process; src_id++) {
-            if (src_id != proc->pid) {
-                if (!receive(proc, src_id, &incoming_msg)) {
-                    update_lamport_time(incoming_msg.s_header.s_local_time);
-
-                    switch (incoming_msg.s_header.s_type) {
-                        case CS_REQUEST: {
-                            Query new_request = {.pid = src_id, .time = incoming_msg.s_header.s_local_time};
-                            enqueue_request(proc, new_request);
-
-                            Message reply_msg = {
-                                .s_header = {
-                                    .s_magic = MESSAGE_MAGIC,
-                                    .s_local_time = increment_lamport_time(),
-                                    .s_type = CS_REPLY,
-                                    .s_payload_len = 0
-                                }
-                            };
-
-                            if (send(proc, new_request.pid, &reply_msg) != 0) {
-                                fprintf(stderr, "Error: Unable to send CS_REPLY from process %d to process %d\n", proc->pid, src_id);
-                                exit(EXIT_FAILURE);
-                            }
-                            break;
-                        }
-                        case CS_REPLY: {
-                            reply_count++;
-                            break;
-                        }
-                        case CS_RELEASE: {
-                            dequeue_request(proc);
-                            break;
-                        }
-                        case DONE: {
-                            completed_processes++;
-                            break;
-                        }
-                        default:
-                            fprintf(stderr, "Warning: Received unknown message type from process %d\n", src_id);
-                            break;
-                    }
-                }
-            }
-        }
+        // Обрабатываем входящие сообщения
+        process_incoming_message(proc, &reply_count, &completed_processes);
     }
 }
+
 
 void close_non_related_pipes(Process* pipes, FILE* pipe_file_ptr) {
     int n = pipes->num_process;
@@ -146,6 +204,7 @@ void close_non_related_pipes(Process* pipes, FILE* pipe_file_ptr) {
         }
     }
 }
+
 
 void close_outcoming_pipes(Process* processes, FILE* pipe_file_ptr) {
     int pid = processes->pid;
@@ -248,51 +307,28 @@ int send_message(Process* proc, MessageType msg_type) {
 }
 
 
- int check_all_received(Process* process, MessageType type) {
-    int count = 0;
-    for (int i = 1; i < process->num_process; i++)
-    {
-        if (i != process->pid) {
-            Message msg;
-            while (receive(process, i, &msg)) {}
-            if (msg.s_header.s_type == type) {
-            update_lamport_time(msg.s_header.s_local_time);
-                count++;
-                printf("Process %d readed %d messages with type %s\n", 
-                    process->pid, count, type == 0 ? "STARTED" : "DONE");
-            }
-        }
-    }
-    if (process->pid != 0 && count == process->num_process-2) { 
-        return 0;
-    } else if (process->pid == 0 && count == process->num_process - 1) {
-        return 0;
-    }
-    return -1;
+int check_all_received(Process* process, MessageType type) {
+   int count = 0;
+   for (int i = 1; i < process->num_process; i++)
+   {
+       if (i != process->pid) {
+           Message msg;
+           while (receive(process, i, &msg)) {}
+           if (msg.s_header.s_type == type) {
+           update_lamport_time(msg.s_header.s_local_time);
+               count++;
+               printf("Process %d readed %d messages with type %s\n",
+                   process->pid, count, type == 0 ? "STARTED" : "DONE");
+           }
+       }
+   }
+   if (process->pid != 0 && count == process->num_process-2) {
+       return 0;
+   } else if (process->pid == 0 && count == process->num_process - 1) {
+       return 0;
+   }
+   return -1;
 }
-
-/*int check_all_received(Process* process, MessageType type) {
-    int count = 0;
-    for (int i = 1; i < process->num_process; i++)
-    {
-        if (i != process->pid) {
-            Message msg;
-            while (receive(process, i, &msg)) {}
-            if (msg.s_header.s_type == type) {
-                update_lamport_time(msg.s_header.s_local_time);
-                count++;
-                printf("Process %d readed %d messages with type %s\n", 
-                    process->pid, count, type == 0 ? "STARTED" : "DONE");
-            }
-        }
-    }
-    if (process->pid != 0 && count == process->num_process-2) { // -2 Потому что родитель не отправляет сообщений и не нужно принимать сообщения от себя
-        return 0;
-    } else if (process->pid == 0 && count == process->num_process - 1) { // -1 Потому что родитель не отправляет сообщений
-        return 0;
-    }
-    return -1;
-}*/
 
 
 Pipe** init_pipes(int process_count, FILE* log_fp) {
