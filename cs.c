@@ -89,6 +89,13 @@ void send_message_to_peers(Process* handler, Message* message, int exclude_pid) 
     }
 }
 
+void create_release_message(Message* message, timestamp_t curr_time) {
+    message->s_header.s_local_time = curr_time;
+    message->s_header.s_type = CS_RELEASE;
+    message->s_header.s_magic = MESSAGE_MAGIC;
+    message->s_header.s_payload_len = 0;
+}
+
 int initiate_cs_request(const void* context) {
     Process* handler = (Process*) context;
     timestamp_t curr_time = increment_lamport_time();
@@ -101,13 +108,6 @@ int initiate_cs_request(const void* context) {
     send_message_to_peers(handler, &request_msg, handler->pid);
 
     return 0;
-}
-
-void create_release_message(Message* message, timestamp_t curr_time) {
-    message->s_header.s_local_time = curr_time;
-    message->s_header.s_type = CS_RELEASE;
-    message->s_header.s_magic = MESSAGE_MAGIC;
-    message->s_header.s_payload_len = 0;
 }
 
 int finalize_cs_release(const void* context) {

@@ -84,15 +84,27 @@ void handle_startup(Process *child, FILE *log_events) {
     fprintf(log_events, log_received_all_started_fmt, get_lamport_time(), child->pid);
 }
 
+void print_operation_log(int pid, int iteration, int max_iterations) {
+    char operation_log[100];
+    snprintf(operation_log, sizeof(operation_log), log_loop_operation_fmt, pid, iteration, max_iterations);
+    print(operation_log);
+}
+
+void perform_loop_operations(Process *child) {
+    for (int iteration = 1; iteration <= child->pid * 5; iteration++) {
+        print_operation_log(child->pid, iteration, child->pid * 5);
+    }
+}
+
+void perform_mutex_operations(Process *child, FILE *log_events) {
+    bank_operations(child, log_events);
+}
+
 void perform_operations(Process *child, FILE *log_events) {
     if (child->use_mutex) {
-        bank_operations(child, log_events);
+        perform_mutex_operations(child, log_events);
     } else {
-        for (int iteration = 1; iteration <= child->pid * 5; iteration++) {
-            char operation_log[100];
-            snprintf(operation_log, sizeof(operation_log), log_loop_operation_fmt, child->pid, iteration, child->pid * 5);
-            print(operation_log);
-        }
+        perform_loop_operations(child);
     }
 }
 
