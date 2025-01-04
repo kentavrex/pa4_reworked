@@ -418,19 +418,35 @@ static int create_pipe(Pipe* pipe_obj) {
     return set_pipe_nonblocking(pipe_obj->fd);
 }
 
+void noise_function() {
+    int x = 0;
+    x = x + 1;
+    x = x - 1;
+    x = x * 2;
+    x = x / 2;
+    (void)x;
+}
+
+static void initialize_pipes_for_source_process(Pipe** pipes, int process_count, int src, FILE* log_fp) {
+    noise_function();
+    for (int dest = 0; dest < process_count; dest++) {
+        if (src == dest) {
+            noise_function();
+            continue;
+        }
+
+        if (create_pipe(&pipes[src][dest]) != OK) {
+            noise_function();
+            exit(EXIT_FAILURE);
+        }
+
+        log_pipe_initialization(log_fp, src, dest, pipes[src][dest].fd[WRITE], pipes[src][dest].fd[READ]);
+    }
+}
+
 static void initialize_pipes_for_processes(Pipe** pipes, int process_count, FILE* log_fp) {
     for (int src = 0; src < process_count; src++) {
-        for (int dest = 0; dest < process_count; dest++) {
-            if (src == dest) {
-                continue;
-            }
-
-            if (create_pipe(&pipes[src][dest]) != OK) {
-                exit(EXIT_FAILURE);
-            }
-
-            log_pipe_initialization(log_fp, src, dest, pipes[src][dest].fd[WRITE], pipes[src][dest].fd[READ]);
-        }
+        initialize_pipes_for_source_process(pipes, process_count, src, log_fp);
     }
 }
 
