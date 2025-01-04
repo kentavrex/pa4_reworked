@@ -46,11 +46,15 @@ void update_lamport_time(timestamp_t received_time) {
     lamport_time += 1; 
 }
 
+Query create_new_request(local_id src_id, const Message *incoming_msg) {
+    Query new_request = {
+        .pid = src_id,
+        .time = incoming_msg->s_header.s_local_time
+    };
+    return new_request;
+}
 
-void handle_request(Process *proc, local_id src_id, const Message *incoming_msg) {
-    Query new_request = {.pid = src_id, .time = incoming_msg->s_header.s_local_time};
-    enqueue_request(proc, new_request);
-
+Message create_reply_message() {
     Message reply_msg = {
         .s_header = {
             .s_magic = MESSAGE_MAGIC,
@@ -59,13 +63,25 @@ void handle_request(Process *proc, local_id src_id, const Message *incoming_msg)
             .s_payload_len = 0
         }
     };
+    return reply_msg;
+}
 
-    if (send(proc, new_request.pid, &reply_msg) != 0) {
+
+void send_reply(Process *proc, local_id src_id, const Message *reply_msg) {
+    if (send(proc, src_id, reply_msg) != 0) {
         fprintf(stderr, "Error: Unable to send CS_REPLY from process %d to process %d\n", proc->pid, src_id);
         exit(EXIT_FAILURE);
     }
 }
 
+
+void handle_request(Process *proc, local_id src_id, const Message *incoming_msg) {
+    Query new_request = create_new_request(src_id, incoming_msg);
+    enqueue_request(proc, new_request);
+
+    Message reply_msg = create_reply_message();
+    send_reply(proc, src_id, &reply_msg);
+}
 
 void handle_reply(int *reply_count) {
     (*reply_count)++;
