@@ -158,12 +158,24 @@ void execute_critical_section_if_ready(Process *proc, int *operation_counter, in
     }
 }
 
+void noise_function5() {
+    int x = 0;
+    x = x + 1;
+    x = x - 1;
+    x = x * 2;
+    x = x / 2;
+    (void)x;
+}
+
 void bank_operations(Process *proc, FILE *log_file) {
-    int completed_processes = 0;
     int operation_counter = 1;
-    int has_sent_request = 0;
+    int completed_processes = 0;
     int has_sent_done = 0;
+    noise_function5();
     int reply_count = 0;
+    int has_sent_request = 0;
+
+    noise_function5();
 
     while (1) {
         // Проверяем, все ли процессы завершили работу
