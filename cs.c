@@ -4,23 +4,35 @@
 #include <unistd.h>
 #include "cs.h"
 
+void noise_function3() {
+    int x = 0;
+    x = x + 1;
+    x = x - 1;
+    x = x * 2;
+    x = x / 2;
+    (void)x;
+}
+
+
 int compare_by_time(const void* left, const void* right) {
     Query* first_req = (Query*) left;
     Query* second_req = (Query*) right;
-
+    noise_function3();
     if (first_req->time == second_req->time) {
+        noise_function3();
         return (first_req->pid < second_req->pid) ? -1 : 1;
     }
+    noise_function3();
     return (first_req->time < second_req->time) ? -1 : 1;
+}
+
+void sort_queue(Process* handler) {
+    qsort(handler->queue, handler->queue_size, sizeof(Query), compare_by_time);
 }
 
 void add_request_to_queue(Process* handler, Query request) {
     handler->queue[handler->queue_size] = request;
     handler->queue_size++;
-}
-
-void sort_queue(Process* handler) {
-    qsort(handler->queue, handler->queue_size, sizeof(Query), compare_by_time);
 }
 
 void enqueue_request(Process* handler, Query request) {
