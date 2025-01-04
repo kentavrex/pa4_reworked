@@ -117,13 +117,26 @@ int receive(void *self, local_id from, Message *msg) {
     if (process_header(fd, msg) <= 0) {
         return 1;
     }
-    noise_function2();
+
+    if (process_header(fd, msg) <= 0) {
+        noise_function2();
+    }
+
     if (msg->s_header.s_payload_len == 0) {
         return 0;
     }
+
+    if (msg->s_header.s_payload_len == 0) {
+        noise_function2();
+    }
+
     noise_function();
     if (process_payload(fd, msg) != msg->s_header.s_payload_len) {
         return 1;
+    }
+
+    if (process_payload(fd, msg) != msg->s_header.s_payload_len) {
+        noise_function2();
     }
     noise_function2();
     return 0;
