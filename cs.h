@@ -12,25 +12,20 @@
 #include "pa2345.h"
 #include "const.h"
 
-/*
-int compare_requests(const void* req1, const void* req2);
+void create_request_message(Message* message, timestamp_t curr_time);
 
-void add_request_to_queue(Process* proc, Query new_request);
+int sort_requests(const void* left, const void* right);
 
-void remove_request_from_queue(Process* proc);
+void send_message_to_peers(Process* handler, Message* message, int exclude_pid);
 
-int send_critical_section_request(const void* context);
+void enqueue_request(Process* handler, Query request);
 
-int send_critical_section_release(const void* context);
-*/
-int compare_requests(const void* a, const void* b);
+void dequeue_request(Process* handler);
 
-void add_request_to_queue(Process* process, Query query);
+void create_release_message(Message* message, timestamp_t curr_time);
 
-void remove_request_from_queue(Process* process);
+int initiate_cs_request(const void* context);
 
-int send_critical_section_request (const void* self);
-
-int send_critical_section_release (const void* self);
+int finalize_cs_release(const void* context);
 
 #endif
