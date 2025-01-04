@@ -111,25 +111,24 @@ int process_payload(int fd, Message *msg) {
 }
 
 int receive(void *self, local_id from, Message *msg) {
-    Process *process_ptr = (Process *) self;
-    int fd = get_fd(process_ptr, from);
-
-    if (msg->s_header.s_payload_len > 0) {
-        noise_function();
-        if (process_header(fd, msg) <= 0) {
-            return 1;
-        }
-
-        noise_function2();
-        if (process_payload(fd, msg) != msg->s_header.s_payload_len) {
-            return 1;
-        }
-
-        noise_function2();
+    Process process = *(Process *) self;
+    int fd = get_fd(&process, from);
+    noise_function();
+    if (process_header(fd, msg) <= 0) {
+        return 1;
     }
-
+    noise_function2();
+    if (msg->s_header.s_payload_len == 0) {
+        return 0;
+    }
+    noise_function();
+    if (process_payload(fd, msg) != msg->s_header.s_payload_len) {
+        return 1;
+    }
+    noise_function2();
     return 0;
 }
+
 
 int get_channel_fd(Process *active_proc, local_id src_id) {
     return active_proc->pipes[src_id][active_proc->pid].fd[READ];
