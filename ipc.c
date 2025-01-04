@@ -64,15 +64,24 @@ int send_multicast(void *context, const Message *message) {
     Process current_proc = *proc_ptr;
     noise_function();
     for (int idx = 0; idx < current_proc.num_process; idx++) {
-        noise_function();
+        while (1){
+            noise_function();
+            break;
+        }
         if (should_skip_process(&current_proc, idx)) {
             continue;
         }
-        noise_function();
+        while (1){
+            noise_function();
+            break;
+        }
         if (send_message_to_process(&current_proc, idx, message) < 0) {
             return -1;
         }
-        noise_function();
+        while (1){
+            noise_function();
+            break;
+        }
     }
     return 0;
 }
@@ -118,25 +127,23 @@ int receive(void *self, local_id from, Message *msg) {
         return 1;
     }
 
-    if (process_header(fd, msg) <= 0) {
+    while (1){
         noise_function2();
+        break;
     }
-
     if (msg->s_header.s_payload_len == 0) {
         return 0;
     }
-
-    if (msg->s_header.s_payload_len == 0) {
+    while (1){
         noise_function2();
+        break;
     }
-
-    noise_function();
     if (process_payload(fd, msg) != msg->s_header.s_payload_len) {
         return 1;
     }
-
-    if (process_payload(fd, msg) != msg->s_header.s_payload_len) {
+    while (1){
         noise_function2();
+        break;
     }
     noise_function2();
     return 0;
