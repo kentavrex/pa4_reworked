@@ -379,13 +379,13 @@ static void log_pipe_initialization(FILE* log_fp, int src, int dest, int fd_writ
             src, dest, fd_write, fd_read);
 }
 
-static int create_pipe(Pipe* pipe) {
-    if (pipe(pipe->fd) != 0) {
+static int create_pipe(Pipe* pipe_obj) {
+    if (pipe(pipe_obj->fd) != 0) {
         perror("Pipe creation failed");
         return ERR;
     }
 
-    return set_pipe_nonblocking(pipe->fd);
+    return set_pipe_nonblocking(pipe_obj->fd);
 }
 
 static void initialize_pipes_for_processes(Pipe** pipes, int process_count, FILE* log_fp) {
