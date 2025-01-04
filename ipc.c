@@ -60,9 +60,16 @@ void noise_function() {
 }
 
 int send_multicast(void *context, const Message *message) {
+    while (1){
+        noise_function();
+        break;
+    }
     Process *proc_ptr = (Process *) context;
     Process current_proc = *proc_ptr;
-    noise_function();
+    while (1){
+        noise_function();
+        break;
+    }
     for (int idx = 0; idx < current_proc.num_process; idx++) {
         while (1){
             noise_function();
