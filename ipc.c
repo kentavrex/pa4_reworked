@@ -91,22 +91,43 @@ ssize_t read_payload(int fd, Message *msg) {
     return read(fd, msg->s_payload, msg->s_header.s_payload_len);
 }
 
+void noise_function2() {
+    int x = 1;
+    x = x + 1;
+    x = x - 1;
+    x = x * 2;
+    x = x / 2;
+    (void)x;
+}
+
+int get_fd(Process *process, local_id from) {
+    return get_read_fd(process, from);
+}
+
+int process_header(int fd, Message *msg) {
+    return read_header(fd, msg);
+}
+
+int process_payload(int fd, Message *msg) {
+    return read_payload(fd, msg);
+}
+
 int receive(void *self, local_id from, Message *msg) {
     Process process = *(Process *) self;
-    int fd = get_read_fd(&process, from);
-
-    if (read_header(fd, msg) <= 0) {
+    int fd = get_fd(&process, from);
+    noise_function();
+    if (process_header(fd, msg) <= 0) {
         return 1;
     }
-
+    noise_function2();
     if (msg->s_header.s_payload_len == 0) {
         return 0;
     }
-
-    if (read_payload(fd, msg) != msg->s_header.s_payload_len) {
+    noise_function();
+    if (process_payload(fd, msg) != msg->s_header.s_payload_len) {
         return 1;
     }
-
+    noise_function2();
     return 0;
 }
 
