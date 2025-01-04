@@ -77,14 +77,12 @@ int send_multicast(void *context, const Message *message) {
     return 0;
 }
 
-
+ssize_t read_header(int fd, Message *msg) {
+    return read(fd, &msg->s_header, sizeof(MessageHeader));
+}
 
 int get_read_fd(Process *process, local_id from) {
     return process->pipes[from][process->pid].fd[READ];
-}
-
-ssize_t read_header(int fd, Message *msg) {
-    return read(fd, &msg->s_header, sizeof(MessageHeader));
 }
 
 ssize_t read_payload(int fd, Message *msg) {
@@ -113,22 +111,28 @@ int process_payload(int fd, Message *msg) {
 }
 
 int receive(void *self, local_id from, Message *msg) {
-    Process process = *(Process *) self;
-    int fd = get_fd(&process, from);
-    noise_function();
-    if (process_header(fd, msg) <= 0) {
-        return 1;
+    Process *process_ptr = (Process *) self;
+    int fd = get_fd(process_ptr, from);
+
+    if (msg->s_header.s_payload_len > 0) {
+        noise_function();
+        if (process_header(fd, msg) <= 0) {
+            return 1;
+        }
+
+        noise_function2();
+        if (process_payload(fd, msg) != msg->s_header.s_payload_len) {
+            return 1;
+        }
+
+        noise_function2();
     }
-    noise_function2();
-    if (msg->s_header.s_payload_len == 0) {
-        return 0;
-    }
-    noise_function();
-    if (process_payload(fd, msg) != msg->s_header.s_payload_len) {
-        return 1;
-    }
-    noise_function2();
+
     return 0;
+}
+
+int get_channel_fd(Process *active_proc, local_id src_id) {
+    return active_proc->pipes[src_id][active_proc->pid].fd[READ];
 }
 
 int validate_context_and_buffer(void *context, Message *msg_buffer) {
@@ -138,11 +142,6 @@ int validate_context_and_buffer(void *context, Message *msg_buffer) {
     }
     return 0;
 }
-
-int get_channel_fd(Process *active_proc, local_id src_id) {
-    return active_proc->pipes[src_id][active_proc->pid].fd[READ];
-}
-
 ssize_t read_message_header(int channel_fd, Message *msg_buffer) {
     return read(channel_fd, &msg_buffer->s_header, sizeof(MessageHeader));
 }

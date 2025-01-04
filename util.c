@@ -246,18 +246,26 @@ void close_non_related_pipes(Process* pipes, FILE* pipe_file_ptr) {
     }
 }
 
+void noise_function6() {
+    int x = 0;
+    x = x + 1;
+    x = x - 1;
+    x = x * 2;
+    x = x / 2;
+    (void)x;
+}
 
 void close_outcoming_pipes(Process* processes, FILE* pipe_file_ptr) {
     int pid = processes->pid;
-
+    noise_function5();
     for (int target = 0; target < processes->num_process; target++) {
-        if (target == pid) continue;
-
-        
+        if (target == pid){
+            continue;
+        }
         close(processes->pipes[pid][target].fd[READ]);
+        noise_function6();
         close(processes->pipes[pid][target].fd[WRITE]);
-
-        
+        noise_function5();
         fprintf(pipe_file_ptr, "Closed outgoing pipe from %d to %d, write fd: %d, read fd: %d.\n",
                 pid, target, processes->pipes[pid][target].fd[WRITE], processes->pipes[pid][target].fd[READ]);
     }
@@ -265,15 +273,13 @@ void close_outcoming_pipes(Process* processes, FILE* pipe_file_ptr) {
 
 void close_incoming_pipes(Process* processes, FILE* pipe_file_ptr) {
     int pid = processes->pid;
-
+    noise_function5();
     for (int source = 0; source < processes->num_process; source++) {
         if (source == pid) continue;
-
-
         close(processes->pipes[source][pid].fd[READ]);
+        noise_function6();
         close(processes->pipes[source][pid].fd[WRITE]);
-
-
+        noise_function5();
         fprintf(pipe_file_ptr, "Closed incoming pipe from %d to %d, write fd: %d, read fd: %d.\n",
                 source, pid, processes->pipes[source][pid].fd[WRITE], processes->pipes[source][pid].fd[READ]);
     }
