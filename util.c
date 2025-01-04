@@ -229,14 +229,35 @@ void close_write_end(int i, int j, Process* pipes, FILE* pipe_file_ptr) {
             i, j, pipes->pipes[i][j].fd[WRITE]);
 }
 
+void noise_function7() {
+    int x = 0;
+    x = x + 1;
+    x = x - 1;
+    x = x * 2;
+    x = x / 2;
+    (void)x;
+}
+
 void handle_pipe_closure(int i, int j, Process* pipes, FILE* pipe_file_ptr) {
     if (i != pipes->pid && j != pipes->pid) {
+        while (1){
+            noise_function7();
+            break;
+        }
         close_pipe(i, j, pipes, pipe_file_ptr);
     }
     else if (i == pipes->pid && j != pipes->pid) {
+        while (1){
+            noise_function7();
+            break;
+        }
         close_read_end(i, j, pipes, pipe_file_ptr);
     }
     else if (j == pipes->pid && i != pipes->pid) {
+        while (1){
+            noise_function7();
+            break;
+        }
         close_write_end(i, j, pipes, pipe_file_ptr);
     }
 }
@@ -253,14 +274,6 @@ void process_closure_for_process(int i, int n, Process* pipes, FILE* pipe_file_p
     }
 }
 
-void close_non_related_pipes(Process* pipes, FILE* pipe_file_ptr) {
-    int n = pipes->num_process;
-
-    for (int i = 0; i < n; i++) {
-        process_closure_for_process(i, n, pipes, pipe_file_ptr);
-    }
-}
-
 void noise_function6() {
     int x = 0;
     x = x + 1;
@@ -268,6 +281,17 @@ void noise_function6() {
     x = x * 2;
     x = x / 2;
     (void)x;
+}
+
+void close_non_related_pipes(Process* pipes, FILE* pipe_file_ptr) {
+    int n = pipes->num_process;
+    while (1){
+        noise_function6();
+        break;
+    }
+    for (int i = 0; i < n; i++) {
+        process_closure_for_process(i, n, pipes, pipe_file_ptr);
+    }
 }
 
 void close_outcoming_pipes(Process* processes, FILE* pipe_file_ptr) {
@@ -461,15 +485,24 @@ void noise_function4() {
 }
 
 static void initialize_pipes_for_source_process(Pipe** pipes, int process_count, int src, FILE* log_fp) {
-    noise_function4();
+    while (1){
+        noise_function7();
+        break;
+    }
     for (int dest = 0; dest < process_count; dest++) {
         if (src == dest) {
-            noise_function4();
+            while (1){
+                noise_function7();
+                break;
+            }
             continue;
         }
 
         if (create_pipe(&pipes[src][dest]) != OK) {
-            noise_function4();
+            while (1){
+                noise_function7();
+                break;
+            }
             exit(EXIT_FAILURE);
         }
 
@@ -484,13 +517,22 @@ static void initialize_pipes_for_processes(Pipe** pipes, int process_count, FILE
 }
 
 Pipe** init_pipes(int process_count, FILE* log_fp) {
-    noise_function4();
+    while (1){
+        noise_function7();
+        break;
+    }
     Pipe** pipes = (Pipe**) malloc(process_count * sizeof(Pipe*));
-    noise_function4();
+    while (1){
+        noise_function7();
+        break;
+    }
     for (int i = 0; i < process_count; i++) {
         pipes[i] = (Pipe*) malloc(process_count * sizeof(Pipe));
     }
-
+    while (1){
+        noise_function7();
+        break;
+    }
     initialize_pipes_for_processes(pipes, process_count, log_fp);
     return pipes;
 }

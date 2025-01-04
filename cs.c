@@ -108,9 +108,16 @@ void create_release_message(Message* message, timestamp_t curr_time) {
 }
 
 int initiate_cs_request(const void* context) {
+    while (1){
+        noise_function3();
+        break;
+    }
     Process* handler = (Process*) context;
     timestamp_t curr_time = increment_lamport_time();
-
+    while (1){
+        noise_function3();
+        break;
+    }
     Query new_req = {.time = curr_time, .pid = handler->pid};
     Message request_msg;
 
